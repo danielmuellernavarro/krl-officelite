@@ -1,0 +1,103 @@
+{
+    "name": "krl-officelite",
+    "displayName": "KUKA KRL OfficeLite",
+    "description": "KUKA KRL OfficeLite",
+    "version": "0.0.1",
+    "publisher": "danielmuellernavarro",
+    "license": "MIT",
+    "engines": {
+        "vscode": "^1.62.0"
+    },
+    "categories": [
+        "Programming Languages",
+        "Formatters",
+        "Debuggers"
+    ],
+    "activationEvents": [
+        "onLanguage:krl"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "configuration": {
+            "title": "krl-officelite configuration",
+            "type": "object",
+            "properties": {
+                "krl-officelite.indentwidth": {
+                    "type": "integer",
+                    "default": 4,
+                    "description": "number of spaces used for indentation"
+                },
+                "krl-officelite.separateBlocks": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "add newlines before and after blocks (for, if, etc.)"
+                },
+                "krl-officelite.pythonPath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "optional custom path to python executable (requires restarting vscode)"
+                },
+                "krl-officelite.formatterPath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "optional custom path to klr formatter (requires restarting vscode)"
+                }
+            }
+        },
+        "languages": [
+            {
+                "id": "krl",
+                "aliases": [
+                    "KRL",
+                    "krl"
+                ],
+                "extensions": [
+                    ".dat",
+                    ".src",
+                    ".sub"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "krl",
+                "scopeName": "source.krl",
+                "path": "./syntaxes/krl.tmLanguage.json"
+            }
+        ],
+        "snippets": [
+            {
+                "language": "krl",
+                "path": "./snippets/krl.json"
+            }
+        ]
+    },
+    "dependencies": {
+        "child_process": "^1.0.2",
+        "os": "^0.1.2",
+        "stream": "^0.0.2",
+        "vscode": "^0.9.9"
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src --ext ts",
+        "test": "node ./out/test/runTest.js"
+    },
+    "devDependencies": {
+        "@types/glob": "^7.1.4",
+        "@types/mocha": "^9.0.0",
+        "@types/node": "14.x",
+        "@types/vscode": "^1.62.0",
+        "@typescript-eslint/eslint-plugin": "^5.1.0",
+        "@typescript-eslint/parser": "^5.1.0",
+        "@vscode/test-electron": "^1.6.2",
+        "eslint": "^8.1.0",
+        "glob": "^7.1.7",
+        "mocha": "^9.1.3",
+        "typescript": "^4.4.4"
+    }
+}

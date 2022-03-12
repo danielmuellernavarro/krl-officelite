@@ -1,0 +1,11 @@
+node_modules
+*.vsix
+notes.txt
+test
+out
+test*
+*pyc
+.suo
+.sqlite
+.vscode/
+.vs/
