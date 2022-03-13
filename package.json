@@ -2,21 +2,26 @@
     "name": "krl-officelite",
     "displayName": "KUKA KRL OfficeLite",
     "description": "KUKA KRL OfficeLite",
-    "version": "0.0.1",
-    "publisher": "danielmuellernavarro",
+    "version": "0.0.5",
+    "publisher": "krl-officelite",
     "license": "MIT",
     "engines": {
         "vscode": "^1.62.0"
     },
     "categories": [
         "Programming Languages",
-        "Formatters",
-        "Debuggers"
+        "Formatters"
     ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/danielmuellernavarro/krl-officelite.git"
+    },
     "activationEvents": [
         "onLanguage:krl"
     ],
     "main": "./out/extension.js",
+    "icon": "images/icon.png",
+    "bugs": "https://github.com/danielmuellernavarro/krl-officelite/issues",
     "contributes": {
         "configuration": {
             "title": "krl-officelite configuration",
@@ -76,8 +81,7 @@
     "dependencies": {
         "child_process": "^1.0.2",
         "os": "^0.1.2",
-        "stream": "^0.0.2",
-        "vscode": "^0.9.9"
+        "stream": "^0.0.2"
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
@@ -95,6 +99,7 @@
         "@typescript-eslint/eslint-plugin": "^5.1.0",
         "@typescript-eslint/parser": "^5.1.0",
         "@vscode/test-electron": "^1.6.2",
+        "esbuild": "^0.14.25",
         "eslint": "^8.1.0",
         "glob": "^7.1.7",
         "mocha": "^9.1.3",

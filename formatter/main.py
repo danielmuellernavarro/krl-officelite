@@ -19,7 +19,6 @@ def main():
 
     else:
         for arg in sys.argv[1:]:
-            print(arg)
             key, value = arg.split('=')
             if key == '--filename':
                 pass

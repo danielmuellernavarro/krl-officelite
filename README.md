@@ -1,3 +1,3 @@
-# krl-officelite README
+# krl-officelite
 
 KRL. Kuka Robot Language
