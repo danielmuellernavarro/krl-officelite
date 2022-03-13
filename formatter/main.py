@@ -5,7 +5,7 @@ from krl import Formatter
 
 def main():
     sys.stdout.reconfigure(encoding='utf-8') 
-    options = dict(filename='-', startLine=1, endLine=None, indentWidth=4, separateBlocks=True)
+    options = dict(filename='-', startLine=1, endLine=None, indentWidth=4, separateBeforeBlocks=False, separateAfterBlocks=True)
     if len(sys.argv) < 2:
         usage = 'usage: formatter.py filename [options...]\n'
         opt = '  OPTIONS:\n'
@@ -34,9 +34,10 @@ def main():
         indentWidth = options['--indentWidth']
         startLine = options['--startLine']
         endLine = options['--endLine']
-        separateBlocks = options['--separateBlocks']
+        separateBeforeBlocks = options['--separateBeforeBlocks']
+        separateAfterBlocks = options['--separateAfterBlocks']
 
-        formatter = Formatter(indentWidth=indentWidth, separateBlocks=separateBlocks)
+        formatter = Formatter(indentWidth=indentWidth, separateBeforeBlocks=separateBeforeBlocks, separateAfterBlocks=separateAfterBlocks)
         formatter.formatFile(filename, startLine, endLine)
 
 

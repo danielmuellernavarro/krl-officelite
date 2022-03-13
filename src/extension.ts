@@ -3,10 +3,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 import * as vscode from "vscode";
 import cp = require("child_process");
-import stream = require('stream');
 import os = require("os");
-import { encode } from "querystring";
-import { stdin } from "process";
+
 
 var channel = null;
 const fullRange = (doc: { validateRange: (arg0: vscode.Range) => any; }) => doc.validateRange(new vscode.Range(0, 0, Number.MAX_VALUE, Number.MAX_VALUE));
@@ -43,19 +41,23 @@ class KrlFormatter {
         return new Promise((resolve, reject) => {
             let filename = "--filename=" + "\"" + document.fileName + "\""
 
-            let indentwidth = vscode.workspace.getConfiguration('krl-formatter')['indentwidth'];
+            let indentwidth = vscode.workspace.getConfiguration('krl-officelite')['indentwidth'];
             indentwidth === undefined ? indentwidth = "4" : "";
             indentwidth = "--indentWidth=" + indentwidth;
 
-            let separateBlocks = vscode.workspace.getConfiguration('krl-formatter')['separateBlocks'];
-            separateBlocks === undefined ? separateBlocks = true : "";
-            separateBlocks = "--separateBlocks=" + separateBlocks;
+            let separateBeforeBlocks = vscode.workspace.getConfiguration('krl-officelite')['separateBeforeBlocks'];
+            separateBeforeBlocks === undefined ? separateBeforeBlocks = false : "";
+            separateBeforeBlocks = "--separateBeforeBlocks=" + separateBeforeBlocks;
+
+            let separateAfterBlocks = vscode.workspace.getConfiguration('krl-officelite')['separateAfterBlocks'];
+            separateAfterBlocks === undefined ? separateAfterBlocks = true : "";
+            separateAfterBlocks = "--separateAfterBlocks=" + separateAfterBlocks;
 
             let start = "--startLine=" + (range.start.line + 1);
             let end = "--endLine=" + (range.end.line + 1);
 
             let command = this.py + " " + this.formatter + " " + filename + " " +
-                indentwidth + " " + separateBlocks + " " + start + " " + end
+                indentwidth + " " + separateBeforeBlocks + " " + separateAfterBlocks + " " + start + " " + end
             cp.exec(command, (_err: any, stdout: string, stderr: string) => {
                 if (stdout != '') {
                     let toreplace = document.validateRange(new vscode.Range(range.start.line, 0, range.end.line + 1, 0));
@@ -75,16 +77,13 @@ class KrlFormatter {
 export function activate(context: vscode.ExtensionContext) {
     vscode.languages.setLanguageConfiguration("krl", {
         indentationRules: {
-            decreaseIndentPattern: new RegExp(
-                /^\s*(ENDFOR|ELSE|ENDIF|ENDLOOP|UNTIL.*|ENDWHILE|ENDSWITCH|CASE.*|DEFAULT.*)\s*(;.*)?$/, "i"),
-            increaseIndentPattern: new RegExp(
-                /^\s*(FOR.*|IF.*|ELSE|LOOP|REPEAT|WHILE.*|SWITCH.*|CASE.*|DEFAULT.*)\s*(;.*)?$/, "i"),
+            decreaseIndentPattern: new RegExp(/^\s*(ENDFOR|ELSE|ENDIF|ENDLOOP|UNTIL.*|ENDWHILE|ENDSWITCH|CASE.*|DEFAULT.*)\s*(;.*)?$/, "i"),
+            increaseIndentPattern: new RegExp(/^\s*(FOR.*|IF.*|ELSE|LOOP|REPEAT|WHILE.*|SWITCH.*|CASE.*|DEFAULT.*)\s*(;.*)?$/, "i"),
         },
     });
 
     const formatter = new KrlDocumentRangeFormatter();
     context.subscriptions.push(vscode.languages.registerDocumentFormattingEditProvider(MODE, formatter));
-    context.subscriptions.push(vscode.languages.registerDocumentRangeFormattingEditProvider(MODE, formatter));
 }
 
 class KrlDocumentRangeFormatter implements vscode.DocumentFormattingEditProvider {
@@ -94,12 +93,6 @@ class KrlDocumentRangeFormatter implements vscode.DocumentFormattingEditProvider
     }
     provideDocumentFormattingEdits(document: vscode.TextDocument, _options: vscode.FormattingOptions, _token: vscode.CancellationToken) {
         return this.formatter.formatDocument(document, fullRange(document));
-    }
-    provideDocumentRangeFormattingEdits(document: vscode.TextDocument, _range: vscode.Range, _options: vscode.FormattingOptions, _token: vscode.CancellationToken) {
-        const firstLine = document.lineAt(0);
-        if (firstLine.text !== '42') {
-            return [vscode.TextEdit.insert(firstLine.range.start, '42\n')];
-        }
     }
 }
 

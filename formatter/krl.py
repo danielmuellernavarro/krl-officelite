@@ -33,12 +33,14 @@ class Formatter:
     ilvl = 0
     step = []
     indentWidth = 0
-    separateBlocks = False
+    separateAfterBlocks = False
+    separateBeforeBlocks = False
     isDatFile = False
 
-    def __init__(self, indentWidth=4, separateBlocks=True):
-        self.indentWidth = 4 # int(indentWidth)
-        self.separateBlocks = separateBlocks
+    def __init__(self, indentWidth=4, separateAfterBlocks=True, separateBeforeBlocks=False):
+        self.indentWidth = int(indentWidth)
+        self.separateAfterBlocks = separateAfterBlocks
+        self.separateBeforeBlocks = separateBeforeBlocks
             
     # divide string into three parts by extracting and formatting certain expressions
     def extract_string_comment(self, part):
@@ -201,6 +203,7 @@ class Formatter:
             rlines[0] = m.group(2)
 
         blank = True
+        lastLineIsComment = False
         for line in rlines:
             # remove additional newlines
             if re.match(r'^\s*$', line):
@@ -219,19 +222,37 @@ class Formatter:
             # adjust indent lvl
             self.ilvl = max(0, self.ilvl + offset)
 
+            m = re.match(self.fcnstart, line)
+            if m:
+                isFcnstart = True
+            else:
+                isFcnstart = False
+
+            m = re.match(self.fcnend, line)
+            if m:
+                isFcnend = True
+            else:
+                isFcnend = False
+
             # add newline before block
-            if (self.separateBlocks and offset > 0 and not blank):
+            if self.separateBeforeBlocks and (offset > 0 or isFcnstart) and not blank and not lastLineIsComment:
                 wlines.append('')
 
             # add formatted line
             wlines.append(line.rstrip())
 
             # add newline after block
-            if self.separateBlocks and offset < 0:
+            if self.separateAfterBlocks and (offset < 0 or isFcnend):
                 wlines.append('')
                 blank = True
             else:
                 blank = False
+
+            m = re.match(self.p_comment, line)
+            if m:
+                lastLineIsComment = True
+            else:
+                lastLineIsComment = False
 
         # remove last line if blank
         while wlines and not wlines[-1]:

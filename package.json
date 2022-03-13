@@ -30,22 +30,27 @@
                 "krl-officelite.indentwidth": {
                     "type": "integer",
                     "default": 4,
-                    "description": "number of spaces used for indentation"
+                    "description": "Number of spaces used for indentation"
                 },
-                "krl-officelite.separateBlocks": {
+                "krl-officelite.separateBeforeBlocks": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Add newlines before and before blocks (for, if, while, loop etc.)"
+                },
+                "krl-officelite.separateAfterBlocks": {
                     "type": "boolean",
                     "default": true,
-                    "description": "add newlines before and after blocks (for, if, etc.)"
-                },
+                    "description": "Add newlines before and after blocks (for, if, while, loop etc.)"
+                },                
                 "krl-officelite.pythonPath": {
                     "type": "string",
                     "default": "",
-                    "description": "optional custom path to python executable (requires restarting vscode)"
+                    "description": "Optional custom path to python executable (requires restarting vscode)"
                 },
                 "krl-officelite.formatterPath": {
                     "type": "string",
                     "default": "",
-                    "description": "optional custom path to klr formatter (requires restarting vscode)"
+                    "description": "Optional custom path to klr formatter (requires restarting vscode)"
                 }
             }
         },
