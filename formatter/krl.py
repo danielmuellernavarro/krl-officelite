@@ -37,7 +37,7 @@ class Formatter:
     separateBeforeBlocks = False
     isDatFile = False
 
-    def __init__(self, indentWidth=4, separateAfterBlocks=True, separateBeforeBlocks=False):
+    def __init__(self, indentWidth=2, separateAfterBlocks=False, separateBeforeBlocks=False):
         self.indentWidth = int(indentWidth)
         self.separateAfterBlocks = separateAfterBlocks
         self.separateBeforeBlocks = separateBeforeBlocks

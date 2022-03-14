@@ -42,7 +42,7 @@ class KrlFormatter {
             let filename = "--filename=" + "\"" + document.fileName + "\""
 
             let indentwidth = vscode.workspace.getConfiguration('krl-officelite')['indentwidth'];
-            indentwidth === undefined ? indentwidth = "4" : "";
+            indentwidth === undefined ? indentwidth = "2" : "";
             indentwidth = "--indentWidth=" + indentwidth;
 
             let separateBeforeBlocks = vscode.workspace.getConfiguration('krl-officelite')['separateBeforeBlocks'];
@@ -50,7 +50,7 @@ class KrlFormatter {
             separateBeforeBlocks = "--separateBeforeBlocks=" + separateBeforeBlocks;
 
             let separateAfterBlocks = vscode.workspace.getConfiguration('krl-officelite')['separateAfterBlocks'];
-            separateAfterBlocks === undefined ? separateAfterBlocks = true : "";
+            separateAfterBlocks === undefined ? separateAfterBlocks = false : "";
             separateAfterBlocks = "--separateAfterBlocks=" + separateAfterBlocks;
 
             let start = "--startLine=" + (range.start.line + 1);

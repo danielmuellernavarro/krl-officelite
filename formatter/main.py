@@ -5,7 +5,7 @@ from krl import Formatter
 
 def main():
     sys.stdout.reconfigure(encoding='utf-8') 
-    options = dict(filename='-', startLine=1, endLine=None, indentWidth=4, separateBeforeBlocks=False, separateAfterBlocks=True)
+    options = dict(filename='-', startLine=1, endLine=None, indentWidth=2, separateBeforeBlocks=False, separateAfterBlocks=False)
     if len(sys.argv) < 2:
         usage = 'usage: formatter.py filename [options...]\n'
         opt = '  OPTIONS:\n'
@@ -24,7 +24,7 @@ def main():
                 pass
             elif any(char.isdigit() for char in value):
                 value = int(value)
-            elif value.lower() == 'true':
+            elif value.lower() == 'false':
                 value = True
             elif value.lower() == 'false':
                 value = False

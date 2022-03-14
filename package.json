@@ -29,7 +29,7 @@
             "properties": {
                 "krl-officelite.indentwidth": {
                     "type": "integer",
-                    "default": 4,
+                    "default": 2,
                     "description": "Number of spaces used for indentation"
                 },
                 "krl-officelite.separateBeforeBlocks": {
@@ -39,7 +39,7 @@
                 },
                 "krl-officelite.separateAfterBlocks": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Add newlines before and after blocks (for, if, while, loop etc.)"
                 },                
                 "krl-officelite.pythonPath": {
