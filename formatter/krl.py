@@ -14,6 +14,7 @@ class Formatter:
     ctrlcont = re.compile(r'(^|\s*)(else|case|default)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
     ctrlend = re.compile(r'(^|\s*)((endif|endwhile|endfor|endloop|endswitch);?)(\s+\S.*|\s*$)', re.IGNORECASE)
     linecomment = re.compile(r'(^|\s*)(;FOLD|;ENDFOLD|;).*$', re.IGNORECASE)
+    findstring = re.compile(r'(.*)"(.*)"(.*)')
 
     # patterns
     p_comment = re.compile(r'(^|.*\S)\s*((;|&).*)')
@@ -28,6 +29,7 @@ class Formatter:
     p_multiws = re.compile(r'(^|.*\S)(\s{2,})(\S.*|$)')
     p_space_paren = re.compile(r'(^|.*\S)\s{1}(\))(\S.*|$)')
     p_space_paren2 = re.compile(r'(^|.*\S)(\()\s{1}(\S.*|$)')
+    p_string = re.compile(r'(^|.*[\(\[\{,;=\+\-\s])\s*(\"([^\"])*\")([\)\}\]\+\-,;].*|\s+.*|$)')
 
     # indentation
     ilvl = 0
@@ -43,8 +45,7 @@ class Formatter:
         self.separateBeforeBlocks = separateBeforeBlocks
             
     # divide string into three parts by extracting and formatting certain expressions
-    def extract_string_comment(self, part):
-        # comment
+    def extract_comment(self, part):
         m = self.p_comment.match(part)
         if m and not self.isDatFile:
             return (m.group(1) + ' ',  m.group(2), '')
@@ -57,10 +58,13 @@ class Formatter:
         if m:
             return ('', ' ', '')
 
-        # string, comment
-        stringOrComment = self.extract_string_comment(part)
-        if stringOrComment:
-            return stringOrComment
+        m = self.p_string.match(part)
+        if m:
+            return (m.group(1), m.group(2), m.group(4))  
+
+        comment = self.extract_comment(part)
+        if comment:
+            return comment
 
         # rational number (e.g. 1/4)
         m = self.p_num_R.match(part)
@@ -174,6 +178,10 @@ class Formatter:
                 print('There are more end-statements than blocks!', file=sys.stderr)
                 _step = 0
             return (-_step, self.indent(-_step) + m.group(2) + ' ' + self.format(m.group(4)).strip())
+
+        m = re.match(self.findstring, line)
+        if m:
+            return (0, self.indent() + self.format(line).lstrip())
 
         return (0, self.indent() + self.format(line).strip())
 
