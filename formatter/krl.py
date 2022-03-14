@@ -21,7 +21,7 @@ class Formatter:
     p_blank = re.compile(r'^\s+$')
     p_num_R = re.compile(r'(^|.*\W)\s*(\d+)\s*(\/)\s*(\d+)(.*)')
     p_sign = re.compile(r'(.*[\(\[\{,;:=\*/\s])\s*(\+|\-)(\w.*)')
-    p_colon = re.compile(r'(^|.*\S)\s*(:)\s*(\S.*|$)')
+    p_arg_colon = re.compile(r'(^|.*\S)\s*(:)\s*(\S.*|$)')
     p_op = re.compile(r'(^|.*\S)\s*(<>|==|<=|>=)\s*(\S.*|$)')
     p_2op = re.compile(r'(^|.*\S)\s*(\+|\-|\*|\\|/|=|!|~|<|>|\||(?<!^)\&)\s*(\S.*|$)')
     p_func = re.compile(r'(.*\w)(\()\s*(\S.*|$)')
@@ -77,9 +77,9 @@ class Formatter:
             return (m.group(1), m.group(2), m.group(3))
 
         # colon
-        m = self.p_colon.match(part)
+        m = self.p_arg_colon.match(part)
         if m:
-            return (m.group(1), m.group(2), m.group(3))
+            return (m.group(1), ' ' + m.group(2), m.group(3))
 
         # ==, >=, <=, <>, etc
         m = self.p_op.match(part)
