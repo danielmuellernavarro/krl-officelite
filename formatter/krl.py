@@ -23,7 +23,8 @@ class Formatter:
     p_sign = re.compile(r'(.*[\(\[\{,;:=\*/\s])\s*(\+|\-)(\w.*)')
     p_arg_colon = re.compile(r'(^|.*\S)\s*(:)\s*(\S.*|$)')
     p_op = re.compile(r'(^|.*\S)\s*(<>|==|<=|>=)\s*(\S.*|$)')
-    p_2op = re.compile(r'(^|.*\S)\s*(\+|\-|\*|\\|/|=|!|~|<|>|\||(?<!^)\&)\s*(\S.*|$)')
+    p_2op = re.compile(r'(^|.*\S)\s*(\*|\\|/|\||(?<!^)\&)\s*(\S.*|$)')
+    p_3op = re.compile(r'(^|.*\S)\s*(\+|\-|=|!|~|<|>|(?<!^)\&)\s*(\S.*|$)')
     p_func = re.compile(r'(.*\w)(\()\s*(\S.*|$)')
     p_comma = re.compile(r'(^|.*\S)\s*(,)\s*(\S.*|$)')
     p_multiws = re.compile(r'(^|.*\S)(\s{2,})(\S.*|$)')
@@ -86,8 +87,13 @@ class Formatter:
         if m and not self.isDatFile:
             return (m.group(1) + ' ', m.group(2), ' ' + m.group(3))
 
-        # single operator (e.g. +, -, etc.)
+        # single operator (e.g. /, *, etc.)
         m = self.p_2op.match(part)
+        if m and not self.isDatFile:
+            return (m.group(1), m.group(2), m.group(3))        
+
+        # single operator (e.g. +, -, etc.)
+        m = self.p_3op.match(part)
         if m and not self.isDatFile:
             return (m.group(1) + ' ', m.group(2), ' ' + m.group(3))        
 
