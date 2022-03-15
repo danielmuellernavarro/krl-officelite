@@ -2,7 +2,7 @@
     "name": "krl-officelite",
     "displayName": "KUKA KRL OfficeLite",
     "description": "KUKA KRL OfficeLite",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "publisher": "krl-officelite",
     "license": "MIT",
     "engines": {
