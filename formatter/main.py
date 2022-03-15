@@ -25,9 +25,9 @@ def main():
             elif any(char.isdigit() for char in value):
                 value = int(value)
             elif value.lower() == 'false':
-                value = True
-            elif value.lower() == 'false':
                 value = False
+            elif value.lower() == 'true':
+                value = True
             options[key.strip()] = value
 
         filename = options['--filename']
