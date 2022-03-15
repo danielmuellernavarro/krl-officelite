@@ -13,19 +13,8 @@ const MODE: vscode.DocumentFilter = { language: 'krl', scheme: 'file' };
 
 class KrlFormatter {
     machine_os: NodeJS.Platform;
-    formatter: string;
-    py: string;
     constructor() {
         this.machine_os = os.platform();
-        this.py = vscode.workspace.getConfiguration('krl-officelite')['pythonPath'];
-        if (typeof this.py === 'undefined' && this.machine_os == 'win32') {
-            this.py = 'python';
-        }
-        this.formatter = vscode.workspace.getConfiguration('krl-officelite')['formatterPath'];
-        if (typeof this.formatter === 'undefined') {
-            this.formatter = '"' + __dirname + '/formatter/main.py"';
-            this.formatter = this.formatter.replace('out/', '');
-        }
     }
 
     formatDocument(document: vscode.TextDocument, range: vscode.Range): Thenable<vscode.TextEdit[]> {
@@ -40,6 +29,17 @@ class KrlFormatter {
     format(document: vscode.TextDocument, range: { start: { line: number; }; end: { line: number; }; }): Thenable<vscode.TextEdit[]> {
         return new Promise((resolve, reject) => {
             let filename = "--filename=" + "\"" + document.fileName + "\""
+
+            let py = vscode.workspace.getConfiguration('krl-officelite')['pythonPath'];
+            if (typeof py === 'undefined' && this.machine_os == 'win32') {
+                py = 'python';
+            }
+
+            let formatter = vscode.workspace.getConfiguration('krl-officelite')['formatterPath'];
+            if (typeof formatter === 'undefined' || formatter == '') {
+                formatter = '"' + __dirname + '/formatter/main.py"';
+                formatter = formatter.replace('out/', '');
+            }
 
             let indentwidth = vscode.workspace.getConfiguration('krl-officelite')['indentwidth'];
             indentwidth === undefined ? indentwidth = "2" : "";
@@ -56,8 +56,9 @@ class KrlFormatter {
             let start = "--startLine=" + (range.start.line + 1);
             let end = "--endLine=" + (range.end.line + 1);
 
-            let command = this.py + " " + this.formatter + " " + filename + " " +
+            let command = py + " " + formatter + " " + filename + " " +
                 indentwidth + " " + separateBeforeBlocks + " " + separateAfterBlocks + " " + start + " " + end
+            
             cp.exec(command, (_err: any, stdout: string, stderr: string) => {
                 if (stdout != '') {
                     let toreplace = document.validateRange(new vscode.Range(range.start.line, 0, range.end.line + 1, 0));
