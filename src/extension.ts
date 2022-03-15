@@ -17,11 +17,11 @@ class KrlFormatter {
     py: string;
     constructor() {
         this.machine_os = os.platform();
-        this.py = vscode.workspace.getConfiguration('krl-formatter')['pythonPath'];
+        this.py = vscode.workspace.getConfiguration('krl-officelite')['pythonPath'];
         if (typeof this.py === 'undefined' && this.machine_os == 'win32') {
             this.py = 'python';
         }
-        this.formatter = vscode.workspace.getConfiguration('krl-formatter')['formatterPath'];
+        this.formatter = vscode.workspace.getConfiguration('krl-officelite')['formatterPath'];
         if (typeof this.formatter === 'undefined') {
             this.formatter = '"' + __dirname + '/formatter/main.py"';
             this.formatter = this.formatter.replace('out/', '');
