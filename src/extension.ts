@@ -22,7 +22,6 @@ class KrlFormatter {
             this.format(document, range).then((res) => {
                 return resolve(res);
             });
-
         });
     }
 
