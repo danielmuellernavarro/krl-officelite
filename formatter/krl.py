@@ -29,8 +29,6 @@ class Formatter:
     p_func = re.compile(r'(.*\w)(\()\s*(\S.*|$)')
     p_comma = re.compile(r'(^|.*\S)\s*(,)\s*(\S.*|$)')
     p_multiws = re.compile(r'(^|.*\S)(\s{2,})(\S.*|$)')
-    p_space_paren = re.compile(r'(^|.*\S)\s{1}(\))(\S.*|$)')
-    p_space_paren2 = re.compile(r'(^|.*\S)(\()\s{1}(\S.*|$)')
     p_string = re.compile(r'(^|.*[\(\[\{,;=\+\-\s])\s*(\"([^\"])*\")([\)\}\]\+\-,;].*|\s+.*|$)')
 
     # indentation
@@ -111,20 +109,7 @@ class Formatter:
         # multiple whitespace
         m = self.p_multiws.match(part)
         if m:
-            if m.group(1) == '(' or m.group(3) == ')':
-                return (m.group(1), '', m.group(3))
-            else:
-                return (m.group(1), ' ', m.group(3))
-
-        # space and ) or ( and space
-        m = self.p_space_paren.match(part)
-        if m:
-            return (m.group(1), '', m.group(2))
-
-        # ( and space
-        m = self.p_space_paren2.match(part)
-        if m:
-            return (m.group(1), '', m.group(2))
+            return (m.group(1), ' ', m.group(3))
 
         return 0
         
@@ -285,4 +270,3 @@ class Formatter:
         # write output
         for line in wlines:
             print(line)
-
