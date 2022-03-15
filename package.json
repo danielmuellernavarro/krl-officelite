@@ -45,12 +45,12 @@
                 "krl-officelite.pythonPath": {
                     "type": "string",
                     "default": "",
-                    "description": "Optional custom path to python executable (requires restarting vscode)"
+                    "description": "Optional custom path to python executable"
                 },
                 "krl-officelite.formatterPath": {
                     "type": "string",
                     "default": "",
-                    "description": "Optional custom path to klr formatter (requires restarting vscode)"
+                    "description": "Optional custom path to klr formatter"
                 }
             }
         },
