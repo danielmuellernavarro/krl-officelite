@@ -9,7 +9,8 @@ class Formatter:
     fcnend = re.compile(r'(^|\s*)(enddat|end|endfct)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
 
     header = re.compile(r'(&ACCESS|&REL|&PARAM)')
-    ctrlstart = re.compile(r'(^|\s*)(if|while|for|loop)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
+    ctrlstart_for = re.compile(r'(^|\s*)(FOR)\s*(\W\s*\S.*|\s)(TO)(\W\s*\S.*|\s*$)', re.IGNORECASE)
+    ctrlstart = re.compile(r'(^|\s*)(if|while|loop)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
     ctrlstart_2 = re.compile(r'(^|\s*)(switch)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
     ctrlcont = re.compile(r'(^|\s*)(else|case|default)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
     ctrlend = re.compile(r'(^|\s*)((endif|endwhile|endfor|endloop|endswitch);?)(\s+\S.*|\s*$)', re.IGNORECASE)
@@ -161,6 +162,11 @@ class Formatter:
         m = re.match(self.fcnend, line)
         if m:
             return (0, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
+
+        m = re.match(self.ctrlstart_for, line)
+        if m:
+            self.step.append(1)
+            return (1, self.indent() + m.group(2) + ' ' + m.group(3).strip().replace(" ", "") + ' ' + self.format(m.group(4)).strip() + ' ' +  self.format(m.group(5)).strip())
 
         m = re.match(self.ctrlstart, line)
         if m:
