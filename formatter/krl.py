@@ -27,6 +27,9 @@ class Formatter:
     p_2op = re.compile(r'(^|.*\S)\s*(\*|\\|/|\||(?<!^)\&)\s*(\S.*|$)')
     p_3op = re.compile(r'(^|.*\S)\s*(\+|\-|=|!|~|<|>|(?<!^)\&)\s*(\S.*|$)')
     p_func = re.compile(r'(.*\w)(\()\s*(\S.*|$)')
+    p_func_2 = re.compile(r'(.*\w)(\))\s*(\S.*|$)')
+    p_func_3 = re.compile(r'(.*\w)( )(\))\s*(\S.*|$)')
+    p_func_4 = re.compile(r'(^|.*)(\()( )\s*(\S.*|$)')
     p_comma = re.compile(r'(^|.*\S)\s*(,)\s*(\S.*|$)')
     p_multiws = re.compile(r'(^|.*\S)(\s{2,})(\S.*|$)')
     p_string = re.compile(r'(^|.*[\(\[\{,;=\+\-\s])\s*(\"([^\"])*\")([\)\}\]\+\-,;].*|\s+.*|$)')
@@ -99,7 +102,16 @@ class Formatter:
         # function call
         m = self.p_func.match(part)
         if m:
+            return (m.group(1), ' ' + m.group(2), m.group(3))
+        m = self.p_func_2.match(part)
+        if m:
             return (m.group(1), m.group(2), m.group(3))
+        m = self.p_func_3.match(part)
+        if m:
+            return (m.group(1), '', m.group(3))
+        m = self.p_func_4.match(part)
+        if m:
+            return (m.group(1), m.group(2), m.group(4))
 
         # comma/semicolon
         m = self.p_comma.match(part)
