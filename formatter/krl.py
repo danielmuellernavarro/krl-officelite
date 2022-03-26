@@ -6,8 +6,8 @@ import defaultKwargs
 class Formatter:
     # control sequences
     ctrl_1line = re.compile(r'(^|\s*)(if|while|for|loop)(\W\s*\S.*\W)((endif|endwhile|endfor|endloop);?)(\s+\S.*|\s*$)', re.IGNORECASE)
-    fcnstart = re.compile(r'(^|\s*)(deffct|def|deffct)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
-    fcnend = re.compile(r'(^|\s*)(enddat|end|endfct)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
+    fcnstart = re.compile(r'(^|\s*)(def|deffct)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
+    fcnend = re.compile(r'(^|\s*)(end|endfct)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
 
     header = re.compile(r'(&ACCESS|&REL|&PARAM)')
     ctrlstart_for = re.compile(r'(^|\s*)(for)\s*(\W\s*\S.*|\s)(to)(\W\s*\S.*|\s*$)', re.IGNORECASE)
