@@ -10,10 +10,10 @@ class Formatter:
 
     header = re.compile(r'(&ACCESS|&REL|&PARAM)')
     ctrlstart_for = re.compile(r'(^|\s*)(FOR)\s*(\W\s*\S.*|\s)(TO)(\W\s*\S.*|\s*$)', re.IGNORECASE)
-    ctrlstart = re.compile(r'(^|\s*)(if|while|loop)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
+    ctrlstart = re.compile(r'(^|\s*)(if|while|loop|repeat)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
     ctrlstart_2 = re.compile(r'(^|\s*)(switch)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
     ctrlcont = re.compile(r'(^|\s*)(else|case|default)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
-    ctrlend = re.compile(r'(^|\s*)((endif|endwhile|endfor|endloop|endswitch);?)(\s+\S.*|\s*$)', re.IGNORECASE)
+    ctrlend = re.compile(r'(^|\s*)((endif|endwhile|endfor|endloop|endswitch|until);?)(\s+\S.*|\s*$)', re.IGNORECASE)
     linecomment = re.compile(r'(^|\s*)(;FOLD|;ENDFOLD|;).*$', re.IGNORECASE)
     findstring = re.compile(r'(.*)"(.*)"(.*)')
 
