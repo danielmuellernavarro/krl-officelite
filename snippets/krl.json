@@ -57,9 +57,12 @@
         "prefix": "switch",
         "body": [
             "SWITCH (${1:variable})",
-            "CASE ${2:switch}",
-            "\t$0",
-            "DEFAULT",
+            "\t$0CASE ${2:switch}",
+            "\t$0\t$0",
+            "\t$0CASE ${3:switch}",
+            "\t$0\t$0",
+            "\t$0DEFAULT",
+            "\t$0\t$0;",
             "ENDSWITCH"
         ],
         "description": "Switch statement"
