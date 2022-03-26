@@ -39,9 +39,6 @@ class Formatter:
     # indentation
     ilvl = 0
     step = []
-    indentWidth = 0
-    separateAfterBlocks = False
-    separateBeforeBlocks = False
     isDatFile = False
 
     def __init__(self, **kwargs):
@@ -54,6 +51,7 @@ class Formatter:
         self.separateAfterBlocks = kwargs.get('separateAfterBlocks', defaultKwargs.kwargs['separateAfterBlocks']) 
         self.indentAfterFunction = kwargs.get('indentAfterFunction', defaultKwargs.kwargs['indentAfterFunction']) 
         self.indentAfterMainFunction = kwargs.get('indentAfterMainFunction', defaultKwargs.kwargs['indentAfterMainFunction']) 
+
     # divide string into three parts by extracting and formatting certain expressions
     def extract_comment(self, part):
         m = self.p_comment.match(part)
@@ -161,18 +159,23 @@ class Formatter:
 
         m = re.match(self.fcnstart, line)
         if m:
-            self.step.append(1) # todo variable
-            return (1, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
+            if self.indentAfterFunction:
+                self.step.append(1)
+                return (1, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
+            else:
+                return (0, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
 
         m = re.match(self.fcnend, line)
         if m:
-            if len(self.step) > 0: #  todo variable
-                _step = self.step.pop()
+            if self.indentAfterFunction:
+                if len(self.step) > 0:
+                    _step = self.step.pop()
+                else:
+                    print('There are more end-statements than blocks!', file=sys.stderr)
+                    _step = 0
+                return (-_step, self.indent(-_step) + m.group(2) + ' ' + self.format(m.group(3)).strip())
             else:
-                print('There are more end-statements than blocks!', file=sys.stderr)
-                _step = 0
-            return (-_step, self.indent(-_step) + m.group(2) + ' ' + self.format(m.group(3)).strip())            
-            # return (0, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
+                return (0, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
 
         m = re.match(self.ctrlstart_for, line)
         if m:

@@ -18,7 +18,7 @@ def main():
 
         print('%s%s' % (usage, opt), file=sys.stderr)
 
-    else:
+    else: 
         for arg in sys.argv[1:]:
             key, value = arg.split('=')
             if key == '--filename':
