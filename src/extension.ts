@@ -52,11 +52,21 @@ class KrlFormatter {
             separateAfterBlocks === undefined ? separateAfterBlocks = false : "";
             separateAfterBlocks = "--separateAfterBlocks=" + separateAfterBlocks;
 
+            let indentAfterFunction = vscode.workspace.getConfiguration('krl-officelite')['indentAfterFunction'];
+            indentAfterFunction === undefined ? indentAfterFunction = true : "";
+            indentAfterFunction = "--indentAfterFunction=" + indentAfterFunction;
+            
+            let indentAfterMainFunction = vscode.workspace.getConfiguration('krl-officelite')['indentAfterMainFunction'];
+            indentAfterMainFunction === undefined ? indentAfterMainFunction = false : "";
+            indentAfterMainFunction = "--indentAfterMainFunction=" + indentAfterMainFunction;            
+
             let start = "--startLine=" + (range.start.line + 1);
             let end = "--endLine=" + (range.end.line + 1);
 
             let command = py + " " + formatter + " " + filename + " " +
-                indentwidth + " " + separateBeforeBlocks + " " + separateAfterBlocks + " " + start + " " + end
+                indentwidth + " " + separateBeforeBlocks + " " + separateAfterBlocks + " " +
+                indentAfterFunction + indentAfterMainFunction +
+                start + " " + end
             
             cp.exec(command, (_err: any, stdout: string, stderr: string) => {
                 if (stdout != '') {
