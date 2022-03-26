@@ -1,5 +1,6 @@
 import re
 import sys
+import defaultKwargs
 
 
 class Formatter:
@@ -43,11 +44,16 @@ class Formatter:
     separateBeforeBlocks = False
     isDatFile = False
 
-    def __init__(self, indentWidth=2, separateAfterBlocks=False, separateBeforeBlocks=False):
-        self.indentWidth = int(indentWidth)
-        self.separateAfterBlocks = separateAfterBlocks
-        self.separateBeforeBlocks = separateBeforeBlocks
-            
+    def __init__(self, **kwargs):
+        self.filename = kwargs['filename']
+        self.start = kwargs['start']
+        self.end = kwargs['end']
+
+        self.indentWidth = kwargs.get('indentWidth', defaultKwargs.kwargs['indentWidth']) 
+        self.separateBeforeBlocks = kwargs.get('separateBeforeBlocks', defaultKwargs.kwargs['separateBeforeBlocks']) 
+        self.separateAfterBlocks = kwargs.get('separateAfterBlocks', defaultKwargs.kwargs['separateAfterBlocks']) 
+        self.indentAfterFunction = kwargs.get('indentAfterFunction', defaultKwargs.kwargs['indentAfterFunction']) 
+        self.indentAfterMainFunction = kwargs.get('indentAfterMainFunction', defaultKwargs.kwargs['indentAfterMainFunction']) 
     # divide string into three parts by extracting and formatting certain expressions
     def extract_comment(self, part):
         m = self.p_comment.match(part)
@@ -155,11 +161,18 @@ class Formatter:
 
         m = re.match(self.fcnstart, line)
         if m:
-            return (0, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
+            self.step.append(1) # todo variable
+            return (1, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
 
         m = re.match(self.fcnend, line)
         if m:
-            return (0, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
+            if len(self.step) > 0: #  todo variable
+                _step = self.step.pop()
+            else:
+                print('There are more end-statements than blocks!', file=sys.stderr)
+                _step = 0
+            return (-_step, self.indent(-_step) + m.group(2) + ' ' + self.format(m.group(3)).strip())            
+            # return (0, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
 
         m = re.match(self.ctrlstart_for, line)
         if m:
@@ -200,19 +213,19 @@ class Formatter:
 
         return (0, self.indent() + self.format(line).strip())
 
-    # format file from line 'start' to line 'end'
-    def formatFile(self, filename, start, end):
+    # format file from line self.start to line self.end
+    def formatFile(self):
         rlines = list()
         wlines = list()
-        self.isDatFile = filename.endswith('.dat')
+        self.isDatFile = self.filename.endswith('.dat')
 
         # read lines from file
-        if filename == '-':
+        if self.filename == '-':
             with sys.stdin as f:
-                rlines = f.readlines()[start-1:end]
+                rlines = f.readlines()[self.start-1:self.end]
         else:
-            with open(filename, 'r', encoding='UTF-8') as f:
-                rlines = f.readlines()[start-1:end]
+            with open(self.filename, 'r', encoding='UTF-8') as f:
+                rlines = f.readlines()[self.start-1:self.end]
 
         # take care of empty input
         if not rlines:

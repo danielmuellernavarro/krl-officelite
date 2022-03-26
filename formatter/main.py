@@ -1,16 +1,17 @@
 import re
 import sys
+import defaultKwargs
 from krl import Formatter
 
 
 def main():
     sys.stdout.reconfigure(encoding='utf-8') 
-    options = dict(filename='-', startLine=1, endLine=None, indentWidth=2, separateBeforeBlocks=False, separateAfterBlocks=False)
+    kwargs = defaultKwargs.kwargs
     if len(sys.argv) < 2:
         usage = 'usage: formatter.py filename [options...]\n'
         opt = '  OPTIONS:\n'
-        for key in options:
-            val = options[key]
+        for key in kwargs:
+            val = kwargs[key]
             key_type = re.match(r'\<class \'(.*)\'\>', str(type(val))).group(1)
             key_type = key_type.replace('NoneType', 'int')
             opt += '    --%s=%s\n' % (key, key_type)
@@ -28,17 +29,10 @@ def main():
                 value = False
             elif value.lower() == 'true':
                 value = True
-            options[key.strip()] = value
+            kwargs[key.strip()] = value
 
-        filename = options['--filename']
-        indentWidth = options['--indentWidth']
-        startLine = options['--startLine']
-        endLine = options['--endLine']
-        separateBeforeBlocks = options['--separateBeforeBlocks']
-        separateAfterBlocks = options['--separateAfterBlocks']
-
-        formatter = Formatter(indentWidth=indentWidth, separateBeforeBlocks=separateBeforeBlocks, separateAfterBlocks=separateAfterBlocks)
-        formatter.formatFile(filename, startLine, endLine)
+        formatter = Formatter(**kwargs)
+        formatter.formatFile()
 
 
 if __name__ == '__main__':
