@@ -51,7 +51,17 @@
                     "type": "string",
                     "default": "",
                     "description": "Optional custom path to klr formatter"
-                }
+                },
+                "krl-officelite.indentAfterFunction": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Add indentation for functions"
+                },
+                "krl-officelite.indentAfterMainFunction": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If indent after function is true. Add indentation for the main function too"
+                }                
             }
         },
         "languages": [
