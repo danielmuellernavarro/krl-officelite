@@ -39,7 +39,6 @@ class Formatter:
     # indentation
     ilvl = 0
     step = []
-    isDatFile = False
 
     def __init__(self, **kwargs):
         self.filename = kwargs['filename']
@@ -52,6 +51,9 @@ class Formatter:
         self.indentAfterFunction = kwargs.get('indentAfterFunction', defaultKwargs.kwargs['indentAfterFunction']) 
         self.indentAfterMainFunction = kwargs.get('indentAfterMainFunction', defaultKwargs.kwargs['indentAfterMainFunction']) 
 
+        self.isDatFile = False
+        self.firstDef = True
+        self.firstEnddef = True
     # divide string into three parts by extracting and formatting certain expressions
     def extract_comment(self, part):
         m = self.p_comment.match(part)
@@ -159,7 +161,10 @@ class Formatter:
 
         m = re.match(self.fcnstart, line)
         if m:
-            if self.indentAfterFunction:
+            if self.firstDef and not self.indentAfterMainFunction:
+                self.firstDef = False
+                return (0, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
+            elif self.indentAfterFunction:
                 self.step.append(1)
                 return (1, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())
             else:
@@ -167,7 +172,10 @@ class Formatter:
 
         m = re.match(self.fcnend, line)
         if m:
-            if self.indentAfterFunction:
+            if self.firstEnddef and not self.indentAfterMainFunction:
+                self.firstEnddef = False
+                return (0, self.indent() + m.group(2) + ' ' + self.format(m.group(3)).strip())            
+            elif self.indentAfterFunction:
                 if len(self.step) > 0:
                     _step = self.step.pop()
                 else:
