@@ -23,7 +23,7 @@ def main():
             key = key.replace('--','')
             if key == 'filename':
                 pass
-            if any(char.isdigit() for char in value):
+            elif any(char.isdigit() for char in value):
                 value = int(value)
             elif value.lower() == 'false':
                 value = False
