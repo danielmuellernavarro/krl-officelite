@@ -1,12 +1,11 @@
 import re
 import sys
-import defaultKwargs
 from krl import Formatter
 
 
 def main():
     sys.stdout.reconfigure(encoding='utf-8') 
-    kwargs = defaultKwargs.kwargs
+    kwargs = dict()
     if len(sys.argv) < 2:
         usage = 'usage: formatter.py filename [options...]\n'
         opt = '  OPTIONS:\n'
@@ -21,16 +20,17 @@ def main():
     else: 
         for arg in sys.argv[1:]:
             key, value = arg.split('=')
-            if key == '--filename':
+            key = key.replace('--','')
+            if key == 'filename':
                 pass
-            elif any(char.isdigit() for char in value):
+            if any(char.isdigit() for char in value):
                 value = int(value)
             elif value.lower() == 'false':
                 value = False
             elif value.lower() == 'true':
                 value = True
             kwargs[key.strip()] = value
-
+        print(kwargs)
         formatter = Formatter(**kwargs)
         formatter.formatFile()
 

@@ -42,8 +42,8 @@ class Formatter:
 
     def __init__(self, **kwargs):
         self.filename = kwargs['filename']
-        self.start = kwargs['start']
-        self.end = kwargs['end']
+        self.startLine = kwargs['startLine']
+        self.endLine = kwargs['endLine']
 
         self.indentWidth = kwargs.get('indentWidth', defaultKwargs.kwargs['indentWidth']) 
         self.separateBeforeBlocks = kwargs.get('separateBeforeBlocks', defaultKwargs.kwargs['separateBeforeBlocks']) 
@@ -224,7 +224,7 @@ class Formatter:
 
         return (0, self.indent() + self.format(line).strip())
 
-    # format file from line self.start to line self.end
+    # format file from line self.startLine to line self.endLine
     def formatFile(self):
         rlines = list()
         wlines = list()
@@ -233,10 +233,10 @@ class Formatter:
         # read lines from file
         if self.filename == '-':
             with sys.stdin as f:
-                rlines = f.readlines()[self.start-1:self.end]
+                rlines = f.readlines()[self.startLine-1:self.endLine]
         else:
             with open(self.filename, 'r', encoding='UTF-8') as f:
-                rlines = f.readlines()[self.start-1:self.end]
+                rlines = f.readlines()[self.startLine-1:self.endLine]
 
         # take care of empty input
         if not rlines:

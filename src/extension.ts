@@ -60,13 +60,13 @@ class KrlFormatter {
             indentAfterMainFunction === undefined ? indentAfterMainFunction = false : "";
             indentAfterMainFunction = "--indentAfterMainFunction=" + indentAfterMainFunction;            
 
-            let start = "--startLine=" + (range.start.line + 1);
-            let end = "--endLine=" + (range.end.line + 1);
+            let startLine = "--startLine=" + (range.start.line + 1);
+            let endLine = "--endLine=" + (range.end.line + 1);
 
             let command = py + " " + formatter + " " + filename + " " +
                 indentwidth + " " + separateBeforeBlocks + " " + separateAfterBlocks + " " +
-                indentAfterFunction + indentAfterMainFunction +
-                start + " " + end
+                indentAfterFunction + " " + indentAfterMainFunction + " " + 
+                startLine + " " + endLine
             
             cp.exec(command, (_err: any, stdout: string, stderr: string) => {
                 if (stdout != '') {
