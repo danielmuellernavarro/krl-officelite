@@ -30,7 +30,6 @@ def main():
             elif value.lower() == 'true':
                 value = True
             kwargs[key.strip()] = value
-        print(kwargs)
         formatter = Formatter(**kwargs)
         formatter.formatFile()
 
