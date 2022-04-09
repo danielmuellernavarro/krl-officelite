@@ -6,7 +6,7 @@ import defaultKwargs
 class Formatter:
     # control sequences
     ctrl_1line = re.compile(r'(^|\s*)(if|while|for|loop)(\W\s*\S.*\W)((endif|endwhile|endfor|endloop);?)(\s+\S.*|\s*$)', re.IGNORECASE)
-    fcnstart = re.compile(r'(^|\s*)(def|deffct|global\Wdef|global\Wdeffct)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE) # todo global def space word
+    fcnstart = re.compile(r'(^|\s*)(def|deffct|global\Wdef|global\Wdeffct)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
     fcnend = re.compile(r'(^|\s*)(end|endfct)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
 
     header = re.compile(r'(&ACCESS|&REL|&PARAM)')
@@ -28,8 +28,9 @@ class Formatter:
     p_op = re.compile(r'(^|.*\S)\s*(<>|==|<=|>=)\s*(\S.*|$)')
     p_2op = re.compile(r'(^|.*\S)\s*(\*|\\|/|\||(?<!^)\&)\s*(\S.*|$)')
     p_3op = re.compile(r'(^|.*\S)\s*(\+|\-|=|!|~|<|>|(?<!^)\&)\s*(\S.*|$)')
+    p_4op = re.compile(r'(^|.*\S)\s*(B_|AND|OR|EXOR)\s*(\S.*|$)')
     p_func = re.compile(r'(.*\w)(\()\s*(\S.*|$)')
-    p_func_2 = re.compile(r'(.*\w)(\))\s*(\S.*|$)')
+    p_func_2 = re.compile(r'(.*\w)(\))\s*(\S.*)')
     p_func_3 = re.compile(r'(.*\w)( )(\))\s*(\S.*|$)')
     p_func_4 = re.compile(r'(^|.*)(\()( )\s*(\S.*|$)')
     p_comma = re.compile(r'(^|.*\S)\s*(,)\s*(\S.*|$)')
@@ -105,6 +106,11 @@ class Formatter:
         m = self.p_3op.match(part)
         if m and not self.isDatFile:
             return (m.group(1) + ' ', m.group(2), ' ' + m.group(3))        
+
+        # single operator (AND OR XOR B_)
+        m = self.p_4op.match(part)
+        if m and not self.isDatFile:
+            return (m.group(1) + ' ', m.group(2), ' ' + m.group(3))   
 
         # function call
         m = self.p_func.match(part)
