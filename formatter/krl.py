@@ -6,7 +6,7 @@ import defaultKwargs
 class Formatter:
     # control sequences
     ctrl_1line = re.compile(r'(^|\s*)(if|while|for|loop)(\W\s*\S.*\W)((endif|endwhile|endfor|endloop);?)(\s+\S.*|\s*$)', re.IGNORECASE)
-    fcnstart = re.compile(r'(^|\s*)(def|deffct)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
+    fcnstart = re.compile(r'(^|\s*)(def|deffct|global\Wdef|global\Wdeffct)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE) # todo global def space word
     fcnend = re.compile(r'(^|\s*)(end|endfct)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
 
     header = re.compile(r'(&ACCESS|&REL|&PARAM)')
