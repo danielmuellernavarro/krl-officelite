@@ -108,9 +108,9 @@ class Formatter:
             return (m.group(1) + ' ', m.group(2), ' ' + m.group(3))        
 
         # single operator (AND OR XOR B_)
-        # m = self.p_4op.match(part)
-        # if m and not self.isDatFile:
-        #     return (m.group(1) + ' ', m.group(2), ' ' + m.group(3))   
+        m = self.p_4op.match(part)
+        if m and not self.isDatFile:
+            return (m.group(1) + ' ', m.group(2), ' ' + m.group(3))   
 
         # function call
         m = self.p_func.match(part)
