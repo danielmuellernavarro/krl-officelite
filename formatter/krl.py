@@ -20,7 +20,7 @@ class Formatter:
     findstring = re.compile(r'(.*)"(.*)"(.*)')
 
     # patterns
-    p_comment = re.compile(r'(^|.*\S)\s*((;|&).*)')
+    p_comment = re.compile(r'(^|.*\S)\s*(;)(.*)')
     p_blank = re.compile(r'^\s+$')
     p_num_R = re.compile(r'(^|.*\W)\s*(\d+)\s*(\/)\s*(\d+)(.*)')
     p_sign = re.compile(r'(.*[\(\[\{,;:=\*/\s])\s*(\+|\-)(\w.*)')
@@ -58,8 +58,8 @@ class Formatter:
     # divide string into three parts by extracting and formatting certain expressions
     def extract_comment(self, part):
         m = self.p_comment.match(part)
-        if m and not self.isDatFile:
-            return (m.group(1) + ' ',  m.group(2), '')
+        if m:
+            return (m.group(1) + ' ',  m.group(2) + ' ', m.group(3).lstrip())
 
         return 0
 
