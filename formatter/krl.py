@@ -15,7 +15,7 @@ class Formatter:
     ctrlstart = re.compile(r'(^|\s*)(if|while|loop|repeat)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
     ctrlstart_2 = re.compile(r'(^|\s*)(switch)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
     ctrlcont = re.compile(r'(^|\s*)(else|case|default)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
-    ctrlend = re.compile(r'(^|\s*)((endif|endwhile|endfor|endloop|endswitch|until);?)(\s+\S.*|\s*$)', re.IGNORECASE)
+    ctrlend = re.compile(r'(^|\s*)(endif|endwhile|endfor|endloop|endswitch|until)\s*(\W\s*\S.*|\s*$)', re.IGNORECASE)
     linecomment = re.compile(r'(^|\s*)(;FOLD|;ENDFOLD|;).*$', re.IGNORECASE)
     findstring = re.compile(r'(.*)"(.*)"(.*)')
 
@@ -204,7 +204,7 @@ class Formatter:
             else:
                 print('There are more end-statements than blocks!', file=sys.stderr)
                 _step = 0
-            return (-_step, self.indent(-_step) + m.group(2) + ' ' + self.format(m.group(4)).strip())
+            return (-_step, self.indent(-_step) + m.group(2) + ' ' + self.format(m.group(3)).strip())
 
         m = re.match(self.findstring, line)
         if m:
