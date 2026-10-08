@@ -91,6 +91,67 @@
                 "language": "krl",
                 "path": "./snippets/krl.json"
             }
+        ],
+        "breakpoints": [
+            { "language": "krl" }
+        ],
+        "debuggers": [
+            {
+                "type": "krl",
+                "label": "KRL Debug",
+                "languages": ["krl"],
+                "configurationAttributes": {
+                    "launch": {
+                        "required": ["program"],
+                        "properties": {
+                            "program": {
+                                "type": "string",
+                                "description": "Absolute path to the main KRL .src file to debug.",
+                                "default": "${file}"
+                            },
+                            "submitPrograms": {
+                                "type": "array",
+                                "items": { "type": "string" },
+                                "description": "Paths to submit .sub files that run concurrently with the main program. If omitted, the debugger auto-loads .sub files in the main program folder (SPS.SUB first).",
+                                "default": []
+                            },
+                            "stopOnEntry": {
+                                "type": "boolean",
+                                "description": "Break automatically on the first executable statement.",
+                                "default": true
+                            },
+                            "configDat": {
+                                "type": "string",
+                                "description": "Path to $config.dat. If omitted the extension searches upward from the program's folder automatically."
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [
+                    {
+                        "type": "krl",
+                        "request": "launch",
+                        "name": "KRL: Debug",
+                        "program": "${file}",
+                        "stopOnEntry": true
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "KRL: Debug Program",
+                        "description": "Debug a KRL main program (and optional submit programs)",
+                        "body": {
+                            "type": "krl",
+                            "request": "launch",
+                            "name": "KRL: Debug",
+                            "program": "${file}",
+                            "submitPrograms": [],
+                            "stopOnEntry": true,
+                            "configDat": ""
+                        }
+                    }
+                ]
+            }
         ]
     },
     "dependencies": {
