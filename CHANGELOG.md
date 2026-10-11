@@ -1,5 +1,9 @@
 # Change Log
 
+### 2.0.1
+
+- Marketplace page: overview of the features and getting started, search keywords.
+
 ### 2.0.0
 
 The extension now checks KRL like the controller does, the formatter no longer needs Python, and the debugger simulates the robot: motions take as long as on the robot, and errors stop the program where the controller would.

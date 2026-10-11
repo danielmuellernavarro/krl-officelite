@@ -1,20 +1,34 @@
-# krl-officelite
+# KUKA KRL OfficeLite
 
-KUKA KRL language support for VS Code: context-aware completion, diagnostics with quick fixes, inlay hints, signature help, hovers, navigation, folding, a formatter and a debugger that simulates the robot.
+Write, check and test KUKA KRL programs in VS Code: completion that knows your robot project, errors and quick fixes while you type, a formatter, and a debugger that simulates the robot controller, so you can step through `.src` / `.sub` programs without a robot.
 
-## Requirements
+## Features
 
-- VS Code 1.67 or newer. Nothing else: the formatter runs inside the extension (no Python).
-- Node.js / npm (only for building the extension).
+**Editor**
 
-## Running the extension locally
+- Completion of variables, points, routines, system variables (with type and access), structure members and ENUM literals; statement templates (`IF`, `FOR`, `WHILE`, `WAIT FOR`, `SWITCH`, ...) with Tab.
+- Errors and warnings for the whole robot project in Problems: syntax of every statement, undeclared names and points, block structure, `;FOLD` pairs, I/O ranges, velocity limits, unused declarations, with quick fixes (declare a point in the `.dat`, insert `ENDIF`, ...).
+- Signature help, inlay hints (velocity, acceleration, approximation of motions), hovers with positions in mm / ° and decoded Status / Turn.
+- Go to definition and references across `.src`, `.dat` and `$config.dat`; F12 on system variables opens a reference.
+- Folding of `;FOLD` regions (inline forms collapsed), formatter and format on save.
 
-1. Open this repository in VS Code.
-2. Run `npm install` once.
-3. Press `F5` to start an **Extension Development Host** window.
-4. In that new window, open a `.src` file and press `F5` to start KRL debugging.
+**Debugger: the robot controller simulated**
 
-Tests: `npm test` (runs `out/test/debuggerTest.js` and `out/test/languageTest.js` with plain node).
+- Robot and submit interpreter (`SPS.SUB`) side by side, breakpoints, stepping, variables of every scope.
+- Advance run (`$ADVANCE`) with main run and advance run pointers in the editor, advance run stops like on the controller.
+- Motions take as long as on the robot, from its machine data (`Mada/$machine.dat`); position, velocity and acceleration live in the **KRL Robot** view.
+- **Override** and **operating mode** (T1, T2, AUT, EXT) in the debug toolbar, like on the smartPAD; the override goes up to 10000 % to run the simulation faster.
+- **KRL I/O** view to watch and force inputs, outputs, flags and signals; **KRL Messages** for `SET_KRLMSG` / `SET_KRLDLG`; **KRL Live Watch**.
+- Errors stop the program where the controller would: undeclared names, variables without value, indexes outside the array.
+
+## Getting started
+
+1. Open the folder of a robot backup (e.g. `KRC` with `R1/System/$config.dat` and `R1/Mada/$machine.dat`) or the folder of your KRL programs.
+2. Open a `.src` file: completion and checks work right away.
+3. Press **F5** to run it in the simulator (no `launch.json` needed). Use the debug toolbar to change the override and the mode, and the **KRL Robot** and **KRL I/O** views in Run and Debug to watch the robot and force inputs.
+4. Format with **Shift+Alt+F**, or enable `krl-officelite.formatOnSave`.
+
+Requirements: VS Code 1.67 or newer. Nothing else: no Python, no KUKA software.
 
 ## The project
 
@@ -258,3 +272,12 @@ The Variables panel is split into 5 sections:
   ]
 }
 ```
+
+## Development
+
+1. Open this repository in VS Code.
+2. Run `npm install` once (Node.js / npm are needed only for building the extension).
+3. Press `F5` to start an **Extension Development Host** window.
+4. In that new window, open a `.src` file and press `F5` to start KRL debugging.
+
+Tests: `npm test` (runs `out/test/debuggerTest.js` and `out/test/languageTest.js` with plain node).
