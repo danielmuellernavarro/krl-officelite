@@ -9,3 +9,4 @@ tsconfig.json
 *.pdf
 .gitignore
 out/**/*.map
+examples/**

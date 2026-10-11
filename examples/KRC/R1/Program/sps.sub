@@ -1,0 +1,9 @@
+DEF sps()
+  ; submit interpreter: lights an output while the robot holds a part
+  LOOP
+    WAIT FOR $OUT[1]
+    $OUT[2] = TRUE
+    WAIT FOR NOT $OUT[1]
+    $OUT[2] = FALSE
+  ENDLOOP
+END

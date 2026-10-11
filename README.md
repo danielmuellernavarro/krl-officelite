@@ -2,6 +2,8 @@
 
 Write, check and test KUKA KRL programs in VS Code: completion that knows your robot project, errors and quick fixes while you type, a formatter, and a debugger that simulates the robot controller, so you can step through `.src` / `.sub` programs without a robot.
 
+**Test KRL without a robot and without OfficeLite.** Press F5 on a program and watch the simulated robot move, force inputs, change the override and the operating mode.
+
 ## Features
 
 **Editor**
@@ -29,6 +31,8 @@ Write, check and test KUKA KRL programs in VS Code: completion that knows your r
 4. Format with **Shift+Alt+F**, or enable `krl-officelite.formatOnSave`.
 
 Requirements: VS Code 1.67 or newer. Nothing else: no Python, no KUKA software.
+
+**Try it:** the repository has a small pick-and-place cell in [`examples/`](https://github.com/danielmuellernavarro/krl-officelite/tree/main/examples). Open `examples/KRC`, open `R1/Program/demo.src` and press F5.
 
 ## The project
 
