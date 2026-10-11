@@ -1,5 +1,9 @@
 # Change Log
 
+### 2.0.2
+
+- Marketplace page: screenshots of the hovers, diagnostics with quick fixes and the debugger.
+
 ### 2.0.1
 
 - Marketplace page: overview of the features and getting started, search keywords.

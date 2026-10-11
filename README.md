@@ -4,6 +4,24 @@ Write, check and test KUKA KRL programs in VS Code: completion that knows your r
 
 **Test KRL without a robot and without OfficeLite.** Press F5 on a program and watch the simulated robot move, force inputs, change the override and the operating mode.
 
+## Screenshots
+
+Hovers show system variables with their documentation and positions with units; motions get inlay hints for velocity and acceleration:
+
+![Hover on a system variable and inlay hints for velocity and acceleration](images/screenshots/hover-and-inline-hints.png)
+
+Errors are underlined and listed in Problems, with quick fixes such as declaring the variable in the `.dat` or in the routine:
+
+![Undeclared variable with quick fixes to declare it](images/screenshots/diagnostics-quick-fix.png)
+
+Press F5 and the simulated controller runs the program. Here it waits at `WAIT FOR PART_PRESENT`; the **KRL I/O** view shows `$IN[1]` and the **KRL Robot** view the robot:
+
+![Program waiting for an input, with the KRL I/O and KRL Robot views](images/screenshots/debugger-waiting-for-input.png)
+
+Force the input in **KRL I/O** and the program continues; here it stopped at a breakpoint after `PTP XOVER C_PTP`:
+
+![Breakpoint hit after forcing the input, with the call stack of the robot and submit interpreters](images/screenshots/debugger-views.png)
+
 ## Features
 
 **Editor**
