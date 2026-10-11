@@ -13,8 +13,8 @@
         ["{", "}"],
         ["[", "]"],
         ["(", ")"],
-        ["\"", "\""],
-        ["'", "'"]
+        { "open": "\"", "close": "\"", "notIn": ["string", "comment"] },
+        { "open": "'", "close": "'", "notIn": ["string", "comment"] }
     ],
     // symbols that that can be used to surround a selection
     "surroundingPairs": [
@@ -24,13 +24,13 @@
         ["\"", "\""],
         ["'", "'"]
     ],
+    // names include system variables ($POS_ACT) and enumeration literals (#BASE)
+    "wordPattern": "(-?\\d*\\.\\d\\w*)|([$#]?[A-Za-z_][\\w$]*)",
+    // fallback when the extension's folding provider is not active
     "folding": {
         "markers": {
             "start": "^\\s*(;FOLD|\\bDEF\\b|\\bDEFFCT\\b|\\bDEFDAT\\b)",
             "end": "^\\s*(;ENDFOLD|\\bEND\\b|\\bENDFCT\\b|\\bENDDAT\\b)"
         }
-    },
-    "capabilities" : {
-        "documentFormattingProvider" : "true"
     }
 }

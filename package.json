@@ -1,23 +1,33 @@
 {
     "name": "krl-officelite",
     "displayName": "KUKA KRL OfficeLite",
-    "description": "KUKA KRL OfficeLite",
-    "version": "1.2.2",
+    "description": "KUKA KRL language support: smart completion, diagnostics, inlay hints, formatter and a debugger with robot simulation",
+    "version": "2.0.0",
     "publisher": "krl-officelite",
     "license": "MIT",
     "engines": {
-        "vscode": "^1.62.0"
+        "vscode": "^1.67.0"
     },
     "categories": [
         "Programming Languages",
-        "Formatters"
+        "Formatters",
+        "Linters",
+        "Snippets",
+        "Debuggers"
     ],
     "repository": {
         "type": "git",
         "url": "https://github.com/danielmuellernavarro/krl-officelite.git"
     },
     "activationEvents": [
-        "onLanguage:krl"
+        "onLanguage:krl",
+        "onDebugResolve:krl",
+        "onView:krlLiveWatch",
+        "onCommand:krl.searchVariables",
+        "onView:krlRobot",
+        "onView:krlIo",
+        "onCommand:krl.simulation.setOverride",
+        "onCommand:krl.simulation.setMode"
     ],
     "main": "./out/extension.js",
     "icon": "images/icon.png",
@@ -41,16 +51,6 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Add newlines before and after blocks (for, if, while, loop etc.)"
-                },                
-                "krl-officelite.pythonPath": {
-                    "type": "string",
-                    "default": "",
-                    "description": "Optional custom path to python executable"
-                },
-                "krl-officelite.formatterPath": {
-                    "type": "string",
-                    "default": "",
-                    "description": "Optional custom path to klr formatter"
                 },
                 "krl-officelite.indentAfterFunction": {
                     "type": "boolean",
@@ -61,7 +61,100 @@
                     "type": "boolean",
                     "default": false,
                     "description": "If indent after function is true. Add indentation for the main function too"
-                }                
+                },
+                "krl-officelite.formatOnSave": {
+                    "type": "boolean",
+                    "default": false,
+                    "scope": "resource",
+                    "description": "Format KRL files when they are saved (not on auto save after a delay). Only the changed lines are touched, so the cursor stays; a file whose blocks do not match (e.g. IF without ENDIF) is saved unformatted. Not needed when editor.formatOnSave is on for KRL."
+                },
+                "krl-officelite.diagnostics.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Check KRL files while editing: block structure, ;FOLD pairs, declarations, I/O ranges, velocity limits."
+                },
+                "krl-officelite.diagnostics.allFiles": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Check all KRL files of the workspace, not only the open ones: their syntax errors and warnings show in Problems."
+                },
+                "krl-officelite.diagnostics.undeclared": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Report names and routines that are not declared. Needs a project with $config.dat (KRC/R1/System) so that all globals are known (points of motions included: they can be global, too)."
+                },
+                "krl-officelite.diagnostics.unused": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Fade declarations that are never used: local variables and the data list entries of a module (e.g. points left over from deleted motions)."
+                },
+                "krl-officelite.safety.maxCartesianVelocity": {
+                    "type": "number",
+                    "default": 2,
+                    "minimum": 0,
+                    "description": "Commissioning limit for the path velocity in m/s: higher values of $VEL.CP, BAS(#VEL_CP / #CP_PARAMS), SVEL_CP and LDAT data are reported."
+                },
+                "krl-officelite.io.count": {
+                    "type": "integer",
+                    "default": 4096,
+                    "minimum": 1,
+                    "maximum": 8192,
+                    "description": "Number of digital inputs and outputs of the controller ($IN / $OUT indices above it are reported)."
+                },
+                "krl-officelite.simulation.override": {
+                    "type": "number",
+                    "default": 100,
+                    "minimum": 0,
+                    "maximum": 10000,
+                    "markdownDescription": "Override in % for new KRL debug sessions, like on the smartPAD: 0 .. 100 % is the program override `$OV_PRO` (the motions slow down, 0 % = the robot stands); above 100 % (up to 10000 %) the whole simulation runs faster than real time. Change it while debugging with − / + in the debug toolbar, the status bar or the KRL Robot view."
+                },
+                "krl-officelite.simulation.mode": {
+                    "type": "string",
+                    "enum": [
+                        "T1",
+                        "T2",
+                        "AUT",
+                        "EX"
+                    ],
+                    "default": "T1",
+                    "enumDescriptions": [
+                        "Manual reduced velocity: the path at most $VEL_CP_T1 (250 mm/s), the axes at $RED_T1 % (machine data)",
+                        "Manual high velocity: programmed velocity",
+                        "Automatic",
+                        "Automatic external (EXT)"
+                    ],
+                    "markdownDescription": "Operating mode (`$MODE_OP`) for new KRL debug sessions. Change it in the debug toolbar or the status bar while the program is paused, like the key switch of the smartPAD."
+                },
+                "krl-officelite.inlayHints.motionParameters": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show the velocity, acceleration and approximation of motions (from the inline form data, WITH clause or the last $VEL / BAS before it)."
+                },
+                "krl-officelite.inlayHints.parameterNames": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show parameter names before literal arguments of routine calls."
+                },
+                "krl-officelite.folding.autoCollapse": {
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "inlineForms",
+                        "all"
+                    ],
+                    "enumDescriptions": [
+                        "Show everything.",
+                        "Collapse the ;FOLD of inline forms (PTP P1 Vel=100 % ...) when a file is opened, like the smartPAD.",
+                        "Collapse every ;FOLD when a file is opened."
+                    ],
+                    "default": "inlineForms",
+                    "description": "Which ;FOLD regions are collapsed when a KRL file is opened."
+                },
+                "krl-officelite.folding.dimInlineFormParameters": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Dim the parameters of inline form ;FOLD lines (;%{PE}%R 8.3...)."
+                }
             }
         },
         "languages": [
@@ -92,27 +185,829 @@
                 "path": "./snippets/krl.json"
             }
         ],
+        "views": {
+            "debug": [
+                {
+                    "id": "krlMessages",
+                    "name": "KRL Messages",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "id": "krlLiveWatch",
+                    "name": "KRL Live Watch",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "id": "krlRobot",
+                    "name": "KRL Robot",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "id": "krlIo",
+                    "name": "KRL I/O",
+                    "when": "debugType == 'krl'"
+                }
+            ]
+        },
+        "commands": [
+            {
+                "command": "krl.searchVariables",
+                "title": "Search Variables",
+                "category": "KRL",
+                "icon": "$(search)"
+            },
+            {
+                "command": "krl.messages.acknowledge",
+                "title": "Acknowledge",
+                "icon": "$(check)"
+            },
+            {
+                "command": "krl.messages.answer",
+                "title": "Answer",
+                "icon": "$(reply)"
+            },
+            {
+                "command": "krl.messages.acknowledgeAll",
+                "title": "Acknowledge All Messages",
+                "category": "KRL",
+                "icon": "$(check-all)"
+            },
+            {
+                "command": "krl.interpreter.stop",
+                "title": "Stop Interpreter",
+                "category": "KRL"
+            },
+            {
+                "command": "krl.interpreter.start",
+                "title": "Start Interpreter",
+                "category": "KRL"
+            },
+            {
+                "command": "krl.interpreter.restart",
+                "title": "Restart Interpreter (from the beginning)",
+                "category": "KRL"
+            },
+            {
+                "command": "krl.interpreter.startSubmit",
+                "title": "Start Another Submit Program...",
+                "category": "KRL"
+            },
+            {
+                "command": "krl.liveWatch.add",
+                "title": "Add Expression",
+                "category": "KRL Live Watch",
+                "icon": "$(add)"
+            },
+            {
+                "command": "krl.liveWatch.addVariable",
+                "title": "Add to KRL Live Watch"
+            },
+            {
+                "command": "krl.liveWatch.addSelection",
+                "title": "Add to KRL Live Watch",
+                "category": "KRL Live Watch"
+            },
+            {
+                "command": "krl.liveWatch.remove",
+                "title": "Remove Expression",
+                "icon": "$(close)"
+            },
+            {
+                "command": "krl.liveWatch.removeAll",
+                "title": "Remove All Expressions",
+                "category": "KRL Live Watch",
+                "icon": "$(clear-all)"
+            },
+            {
+                "command": "krl.fold.wrapSelection",
+                "title": "Wrap Selection in ;FOLD",
+                "category": "KRL"
+            },
+            {
+                "command": "krl.fold.collapseInlineForms",
+                "title": "Collapse Inline Form Folds",
+                "category": "KRL"
+            },
+            {
+                "command": "krl.fold.collapseAll",
+                "title": "Collapse All ;FOLD Regions",
+                "category": "KRL"
+            },
+            {
+                "command": "krl.dat.declare",
+                "title": "Declare in Data List",
+                "category": "KRL"
+            },
+            {
+                "command": "krl.io.toggle",
+                "title": "Toggle",
+                "icon": "$(debug-restart)"
+            },
+            {
+                "command": "krl.io.set",
+                "title": "Set Value...",
+                "icon": "$(edit)"
+            },
+            {
+                "command": "krl.io.add",
+                "title": "Show Inputs / Outputs...",
+                "category": "KRL I/O",
+                "icon": "$(add)"
+            },
+            {
+                "command": "krl.io.clearPinned",
+                "title": "Remove Added Inputs / Outputs",
+                "category": "KRL I/O",
+                "icon": "$(clear-all)"
+            },
+            {
+                "command": "krl.io.toggleAtCursor",
+                "title": "Toggle Input / Output",
+                "category": "KRL I/O"
+            },
+            {
+                "command": "krl.robot.addToLiveWatch",
+                "title": "Add to KRL Live Watch",
+                "icon": "$(eye)"
+            },
+            {
+                "command": "krl.simulation.decreaseOverride",
+                "title": "Decrease Override",
+                "category": "KRL",
+                "icon": "$(remove)"
+            },
+            {
+                "command": "krl.simulation.setOverride",
+                "title": "Set Override...",
+                "category": "KRL",
+                "icon": "$(dashboard)"
+            },
+            {
+                "command": "krl.simulation.increaseOverride",
+                "title": "Increase Override",
+                "category": "KRL",
+                "icon": "$(add)"
+            },
+            {
+                "command": "krl.simulation.setMode",
+                "title": "Set Operating Mode (T1, T2, AUT, EXT)...",
+                "category": "KRL",
+                "icon": "$(key)"
+            },
+            {
+                "command": "krl.simulation.override.0",
+                "title": "Override 0 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-0-light.svg",
+                    "dark": "images/toolbar/ov-0-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.1",
+                "title": "Override 1 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-1-light.svg",
+                    "dark": "images/toolbar/ov-1-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.3",
+                "title": "Override 3 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-3-light.svg",
+                    "dark": "images/toolbar/ov-3-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.5",
+                "title": "Override 5 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-5-light.svg",
+                    "dark": "images/toolbar/ov-5-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.10",
+                "title": "Override 10 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-10-light.svg",
+                    "dark": "images/toolbar/ov-10-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.20",
+                "title": "Override 20 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-20-light.svg",
+                    "dark": "images/toolbar/ov-20-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.30",
+                "title": "Override 30 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-30-light.svg",
+                    "dark": "images/toolbar/ov-30-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.50",
+                "title": "Override 50 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-50-light.svg",
+                    "dark": "images/toolbar/ov-50-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.75",
+                "title": "Override 75 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-75-light.svg",
+                    "dark": "images/toolbar/ov-75-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.100",
+                "title": "Override 100 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-100-light.svg",
+                    "dark": "images/toolbar/ov-100-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.200",
+                "title": "Override 200 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-200-light.svg",
+                    "dark": "images/toolbar/ov-200-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.500",
+                "title": "Override 500 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-500-light.svg",
+                    "dark": "images/toolbar/ov-500-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.1000",
+                "title": "Override 1000 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-1000-light.svg",
+                    "dark": "images/toolbar/ov-1000-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.2000",
+                "title": "Override 2000 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-2000-light.svg",
+                    "dark": "images/toolbar/ov-2000-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.5000",
+                "title": "Override 5000 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-5000-light.svg",
+                    "dark": "images/toolbar/ov-5000-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.10000",
+                "title": "Override 10000 % (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-10000-light.svg",
+                    "dark": "images/toolbar/ov-10000-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.override.other",
+                "title": "Override (click to change)",
+                "icon": {
+                    "light": "images/toolbar/ov-other-light.svg",
+                    "dark": "images/toolbar/ov-other-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.mode.T1",
+                "title": "Operating mode T1 (click to change while paused)",
+                "icon": {
+                    "light": "images/toolbar/mode-T1-light.svg",
+                    "dark": "images/toolbar/mode-T1-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.mode.T2",
+                "title": "Operating mode T2 (click to change while paused)",
+                "icon": {
+                    "light": "images/toolbar/mode-T2-light.svg",
+                    "dark": "images/toolbar/mode-T2-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.mode.AUT",
+                "title": "Operating mode AUT (click to change while paused)",
+                "icon": {
+                    "light": "images/toolbar/mode-AUT-light.svg",
+                    "dark": "images/toolbar/mode-AUT-dark.svg"
+                }
+            },
+            {
+                "command": "krl.simulation.mode.EX",
+                "title": "Operating mode EXT (click to change while paused)",
+                "icon": {
+                    "light": "images/toolbar/mode-EX-light.svg",
+                    "dark": "images/toolbar/mode-EX-dark.svg"
+                }
+            }
+        ],
+        "menus": {
+            "view/title": [
+                {
+                    "command": "krl.messages.acknowledgeAll",
+                    "when": "view == krlMessages",
+                    "group": "navigation"
+                },
+                {
+                    "command": "krl.searchVariables",
+                    "when": "view == krlLiveWatch",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "krl.liveWatch.add",
+                    "when": "view == krlLiveWatch",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "krl.liveWatch.removeAll",
+                    "when": "view == krlLiveWatch",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "krl.searchVariables",
+                    "when": "view == workbench.debug.variablesView && debugType == 'krl'",
+                    "group": "navigation"
+                },
+                {
+                    "command": "krl.io.add",
+                    "when": "view == krlIo",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "krl.io.clearPinned",
+                    "when": "view == krlIo",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "krl.simulation.decreaseOverride",
+                    "when": "view == krlRobot && debugType == 'krl'",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "krl.simulation.setOverride",
+                    "when": "view == krlRobot && debugType == 'krl'",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "krl.simulation.increaseOverride",
+                    "when": "view == krlRobot && debugType == 'krl'",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "krl.simulation.setMode",
+                    "when": "view == krlRobot && debugType == 'krl'",
+                    "group": "navigation@4"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "krl.messages.acknowledge",
+                    "when": "view == krlMessages && viewItem =~ /^krlMessage\\.(quit|notify|waiting)$/",
+                    "group": "inline"
+                },
+                {
+                    "command": "krl.messages.answer",
+                    "when": "view == krlMessages && viewItem == krlMessage.dialog",
+                    "group": "inline"
+                },
+                {
+                    "command": "krl.liveWatch.remove",
+                    "when": "view == krlLiveWatch && viewItem == krlLiveWatchExpression",
+                    "group": "inline"
+                },
+                {
+                    "command": "krl.io.toggle",
+                    "when": "view == krlIo && viewItem == krlIo.bool",
+                    "group": "inline"
+                },
+                {
+                    "command": "krl.io.set",
+                    "when": "view == krlIo && viewItem =~ /^krlIo./",
+                    "group": "inline"
+                },
+                {
+                    "command": "krl.robot.addToLiveWatch",
+                    "when": "view == krlRobot && viewItem == krlRobotEntry",
+                    "group": "inline"
+                },
+                {
+                    "command": "krl.simulation.decreaseOverride",
+                    "when": "view == krlRobot && viewItem == krlRobotOverride",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "krl.simulation.setOverride",
+                    "when": "view == krlRobot && viewItem == krlRobotOverride",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "krl.simulation.increaseOverride",
+                    "when": "view == krlRobot && viewItem == krlRobotOverride",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "krl.simulation.setMode",
+                    "when": "view == krlRobot && viewItem == krlRobotMode",
+                    "group": "inline@1"
+                }
+            ],
+            "debug/callstack/context": [
+                {
+                    "command": "krl.interpreter.stop",
+                    "when": "debugType == 'krl' && callStackItemType == 'thread'",
+                    "group": "krl@1"
+                },
+                {
+                    "command": "krl.interpreter.start",
+                    "when": "debugType == 'krl' && callStackItemType == 'thread'",
+                    "group": "krl@2"
+                },
+                {
+                    "command": "krl.interpreter.restart",
+                    "when": "debugType == 'krl' && callStackItemType == 'thread'",
+                    "group": "krl@3"
+                },
+                {
+                    "command": "krl.interpreter.startSubmit",
+                    "when": "debugType == 'krl' && callStackItemType == 'thread'",
+                    "group": "krl@4"
+                }
+            ],
+            "debug/variables/context": [
+                {
+                    "command": "krl.liveWatch.addVariable",
+                    "when": "debugType == 'krl'",
+                    "group": "z_commands"
+                }
+            ],
+            "editor/context": [
+                {
+                    "command": "krl.liveWatch.addSelection",
+                    "when": "inDebugMode && debugType == 'krl' && editorLangId == krl",
+                    "group": "debug@100"
+                },
+                {
+                    "command": "krl.io.toggleAtCursor",
+                    "when": "inDebugMode && debugType == 'krl' && editorLangId == krl",
+                    "group": "debug@101"
+                },
+                {
+                    "command": "krl.fold.wrapSelection",
+                    "when": "editorLangId == krl && editorHasSelection",
+                    "group": "1_modification@9"
+                }
+            ],
+            "commandPalette": [
+                {
+                    "command": "krl.messages.acknowledgeAll",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "command": "krl.messages.acknowledge",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.messages.answer",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.interpreter.stop",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "command": "krl.interpreter.start",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "command": "krl.interpreter.restart",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "command": "krl.interpreter.startSubmit",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "command": "krl.searchVariables",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "command": "krl.liveWatch.add",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "command": "krl.liveWatch.addVariable",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.liveWatch.addSelection",
+                    "when": "debugType == 'krl' && editorLangId == krl"
+                },
+                {
+                    "command": "krl.liveWatch.remove",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.io.toggle",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.io.set",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.robot.addToLiveWatch",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.dat.declare",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.io.add",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "command": "krl.io.clearPinned",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "command": "krl.io.toggleAtCursor",
+                    "when": "debugType == 'krl'"
+                },
+                {
+                    "command": "krl.fold.wrapSelection",
+                    "when": "editorLangId == krl"
+                },
+                {
+                    "command": "krl.fold.collapseInlineForms",
+                    "when": "editorLangId == krl"
+                },
+                {
+                    "command": "krl.fold.collapseAll",
+                    "when": "editorLangId == krl"
+                },
+                {
+                    "command": "krl.simulation.override.0",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.1",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.3",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.5",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.10",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.20",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.30",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.50",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.75",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.100",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.200",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.500",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.1000",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.2000",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.5000",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.10000",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.override.other",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.mode.T1",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.mode.T2",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.mode.AUT",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.simulation.mode.EX",
+                    "when": "false"
+                }
+            ],
+            "debug/toolBar": [
+                {
+                    "command": "krl.simulation.decreaseOverride",
+                    "when": "debugType == 'krl'",
+                    "group": "navigation@101"
+                },
+                {
+                    "command": "krl.simulation.override.0",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '0'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.1",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '1'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.3",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '3'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.5",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '5'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.10",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '10'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.20",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '20'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.30",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '30'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.50",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '50'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.75",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '75'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.100",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '100'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.200",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '200'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.500",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '500'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.1000",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '1000'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.2000",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '2000'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.5000",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '5000'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.10000",
+                    "when": "debugType == 'krl' && krl.overrideIcon == '10000'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.override.other",
+                    "when": "debugType == 'krl' && krl.overrideIcon == 'other'",
+                    "group": "navigation@102"
+                },
+                {
+                    "command": "krl.simulation.increaseOverride",
+                    "when": "debugType == 'krl'",
+                    "group": "navigation@103"
+                },
+                {
+                    "command": "krl.simulation.mode.T1",
+                    "when": "debugType == 'krl' && krl.mode == 'T1'",
+                    "group": "navigation@104"
+                },
+                {
+                    "command": "krl.simulation.mode.T2",
+                    "when": "debugType == 'krl' && krl.mode == 'T2'",
+                    "group": "navigation@104"
+                },
+                {
+                    "command": "krl.simulation.mode.AUT",
+                    "when": "debugType == 'krl' && krl.mode == 'AUT'",
+                    "group": "navigation@104"
+                },
+                {
+                    "command": "krl.simulation.mode.EX",
+                    "when": "debugType == 'krl' && krl.mode == 'EX'",
+                    "group": "navigation@104"
+                }
+            ]
+        },
         "breakpoints": [
-            { "language": "krl" }
+            {
+                "language": "krl"
+            }
         ],
         "debuggers": [
             {
                 "type": "krl",
                 "label": "KRL Debug",
-                "languages": ["krl"],
+                "languages": [
+                    "krl"
+                ],
                 "configurationAttributes": {
                     "launch": {
-                        "required": ["program"],
+                        "required": [
+                            "program"
+                        ],
                         "properties": {
                             "program": {
                                 "type": "string",
-                                "description": "Absolute path to the main KRL .src file to debug.",
+                                "description": "Absolute path to the KRL program to debug. A .src runs in the robot interpreter (with the submit programs alongside); a .sub runs alone in the submit interpreter.",
                                 "default": "${file}"
                             },
                             "submitPrograms": {
                                 "type": "array",
-                                "items": { "type": "string" },
-                                "description": "Paths to submit .sub files that run concurrently with the main program. If omitted, the debugger auto-loads .sub files in the main program folder (SPS.SUB first).",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Paths to the .sub programs that run in submit interpreters next to the main program, one thread each. If omitted, SPS.SUB is started (like the controller does), found next to the program or below the robot root such as KRC/R1/System; without SPS.SUB, all .sub files next to the program run. Other .sub files are loaded so they can be called as subprograms.",
+                                "default": []
+                            },
+                            "sources": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Further .src/.dat files whose routines and globals the programs use. If omitted, all modules below the robot root (the folder holding System/$config.dat, e.g. KRC/R1) are loaded.",
                                 "default": []
                             },
                             "stopOnEntry": {
@@ -122,7 +1017,27 @@
                             },
                             "configDat": {
                                 "type": "string",
-                                "description": "Path to $config.dat. If omitted the extension searches upward from the program's folder automatically."
+                                "description": "Path to $config.dat. If omitted the extension searches upward from the program's folder automatically, including System subfolders."
+                            },
+                            "override": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 10000,
+                                "description": "Override in % (0 .. 10000): up to 100 % the program override $OV_PRO, above it the simulation runs faster than real time. Defaults to the setting krl-officelite.simulation.override."
+                            },
+                            "machineData": {
+                                "type": "string",
+                                "description": "Path to the robot's $machine.dat (axis speeds, gear ratios, path limits) for the motion timing. If omitted, Mada/$machine.dat is searched in the robot root (e.g. KRC/R1/Mada) and the folders above the program; without it a standard robot is simulated."
+                            },
+                            "mode": {
+                                "type": "string",
+                                "enum": [
+                                    "T1",
+                                    "T2",
+                                    "AUT",
+                                    "EX"
+                                ],
+                                "description": "Operating mode ($MODE_OP) at the start. Defaults to the setting krl-officelite.simulation.mode (T1)."
                             }
                         }
                     }
@@ -152,26 +1067,26 @@
                     }
                 ]
             }
-        ]
-    },
-    "dependencies": {
-        "child_process": "^1.0.2",
-        "os": "^0.1.2",
-        "stream": "^0.0.2"
+        ],
+        "configurationDefaults": {
+            "[krl]": {
+                "editor.suggest.snippetsPreventQuickSuggestions": false
+            }
+        }
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
-        "pretest": "npm run compile && npm run lint",
+        "pretest": "npm run compile",
         "lint": "eslint src --ext ts",
-        "test": "node ./out/test/runTest.js"
+        "test": "node ./out/test/debuggerTest.js && node ./out/test/languageTest.js"
     },
     "devDependencies": {
         "@types/glob": "^7.1.4",
         "@types/mocha": "^9.0.0",
         "@types/node": "14.x",
-        "@types/vscode": "^1.62.0",
+        "@types/vscode": "^1.67.0",
         "@typescript-eslint/eslint-plugin": "^5.1.0",
         "@typescript-eslint/parser": "^5.1.0",
         "@vscode/test-electron": "^1.6.2",
