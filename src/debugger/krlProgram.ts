@@ -277,7 +277,7 @@ export function parseKrlProgram(programPath: string, source: string): KrlProgram
     const lineToIndex: number[] = new Array(rawLines.length).fill(-1);
     rawLines.forEach((raw, line) => {
         const text = stripComment(raw.trim());
-        if (text === '' || text.startsWith('&')) {
+        if (text === '' || /^(?:﻿|ï»¿)?&/.test(text)) {
             return;
         }
         const kind = classifyLine(text);

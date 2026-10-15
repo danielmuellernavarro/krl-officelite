@@ -18,7 +18,7 @@ import {
     KRL_INT, KRL_REAL, KRL_BOOL, KRL_STR, KRL_UNDEF, InvalidRead, KrlStopError, unassignedValue, hasNoValue,
 } from './krlValue';
 import { evaluateExpression } from './krlExpr';
-import { findConfigDat, findMachineData } from './krlWorkspace';
+import { findConfigDat, findMachineData, readKrlFile } from './krlWorkspace';
 import { componentText, normalizeEditedValue, positionSummary, matrixOf, formatReal } from './krlRobotFormat';
 import {
     RobotCharacteristics, RobotPose, MotionTiming, MotionKind, MotionRequest, KrlMode, KRL_MODES, Arc, Vec3, PathLimits, STANDARD_ROBOT, DEFAULT_RAISE_TIME_S,
@@ -559,7 +559,7 @@ export class KrlRuntime {
         this.robot = STANDARD_ROBOT;
         if (!file) { return; }
         try {
-            this.robot = parseMachineData(fs.readFileSync(file, 'latin1'), file);
+            this.robot = parseMachineData(readKrlFile(file), file);
         } catch (e) {
             this.warnOnce(`mada:${file}`, `[krl] cannot read the machine data ${file}: ${String(e)}; motions use a standard robot`);
         }
@@ -685,7 +685,7 @@ export class KrlRuntime {
         if (this.programs.has(key)) { return; }
         let text: string;
         try {
-            text = fs.readFileSync(filePath, 'latin1');
+            text = readKrlFile(filePath);
         } catch (e) {
             const msg = `cannot read ${filePath}: ${String(e)}`;
             if (errors) { errors.push(msg); } else { this.warnOnce(msg, `[krl] ${msg}`); }

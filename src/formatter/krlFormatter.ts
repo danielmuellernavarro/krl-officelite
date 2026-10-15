@@ -57,8 +57,8 @@ const MOTION_OPT_KEYS = [
 const CTRL_1LINE = /^(^|\s*)(if|while|for|loop)(\W\s*\S.*\W)((endif|endwhile|endfor|endloop);?)(\s+\S.*|\s*$)/i;
 const FCN_START = /^(^|\s*)(global\s+)?(deffct|defdat|def)\b\s*(.*)$/i;
 const FCN_END = /^(^|\s*)(global\s+)?(endfct|enddat|end)\b\s*(.*)$/i;
-/** &ACCESS / &REL / &PARAM header lines */
-const HEADER = /^\s*&.*$/;
+/** &ACCESS / &REL / &PARAM header lines (also after the byte order mark of a UTF-8 file decoded as Windows-1252) */
+const HEADER = /^\s*(?:ï»¿)?&.*$/;
 const FOLD_MARKER = /^(\s*)(;FOLD|;ENDFOLD)(.*)$/i;
 const LINE_COMMENT = /^\s*;.*$/;
 const CTRL_START_FOR = /^(^|\s*)(for)\s+(.*?)\s+(to)\s+(.*)$/i;

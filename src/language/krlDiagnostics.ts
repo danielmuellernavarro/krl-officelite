@@ -3,11 +3,11 @@
 // (with the point names of motions in particular), declarations nobody uses,
 // write-protected system variables, I/O indices out of range, velocities above
 // the configured limits, FOR counters that are not INT, duplicate declarations,
-// unknown labels and routines. Adds them to the syntax issues of the parser.
-// Pure logic (no vscode imports).
+// unknown labels and routines, names written in another case than declared.
+// Adds them to the syntax issues of the parser. Pure logic (no vscode imports).
 
 import { KrlDocument, KrlIssue, KrlDecl, Tok, Span, routineAt } from './krlSyntax';
-import { KrlProject } from './krlProject';
+import { KrlProject, KrlSymbol } from './krlProject';
 import { isStandardConfigName } from './krlStandardConfig';
 import {
     builtinRoutine, isWriteProtected, systemVariable, motionInfo, SIMULATOR_FUNCTIONS, KEYWORDS,
@@ -24,6 +24,10 @@ export interface DiagnosticSettings {
     undeclared: boolean;
     /** mark declarations that are never used */
     unused: boolean;
+    /** warn about names written in another case than declared (KRL ignores the case) */
+    nameCase: boolean;
+    /** warn about names declared only where the file does not see them (another module's data list, another routine) */
+    declaredElsewhere: boolean;
 }
 
 export const DEFAULT_DIAGNOSTIC_SETTINGS: DiagnosticSettings = {
@@ -31,14 +35,20 @@ export const DEFAULT_DIAGNOSTIC_SETTINGS: DiagnosticSettings = {
     ioCount: 4096,
     undeclared: true,
     unused: true,
+    nameCase: false,
+    declaredElsewhere: true,
 };
 
 const span = (line: number, t: Tok): Span => ({ line, start: t.start, end: t.end });
 
 /** Value of a constant expression (literals and operators only), or null. */
 export function constantValue(text: string): number | null {
-    const v: KrlValue = evaluateExpression(text, { resolveName: () => null, invokeFunction: () => null });
-    return v.t === 'int' || v.t === 'real' ? v.v : null;
+    // a variable or function is not known here, and the operators would take it as 0
+    // (`VEL*RedVelExAx[I]/100.0` of BAS.SRC is no constant 0)
+    let constant = true;
+    const unknown = () => { constant = false; return null; };
+    const v: KrlValue = evaluateExpression(text, { resolveName: unknown, invokeFunction: unknown });
+    return constant && (v.t === 'int' || v.t === 'real') ? v.v : null;
 }
 
 /** Point names a motion statement moves to: its target, for CIRC the auxiliary point too. */
@@ -137,7 +147,25 @@ function checkWholeArrays(project: KrlProject, doc: KrlDocument, add: Add): void
 
 type Add = (s: Span, severity: KrlIssue['severity'], code: string, message: string, data?: KrlIssue['data'], unnecessary?: boolean) => void;
 
-/** Undeclared variables and points, unknown routines and labels, too many arguments. */
+/** A name as its declaration writes it. */
+function declaredName(symbol: KrlSymbol): string {
+    switch (symbol.kind) {
+        case 'decl': return symbol.decl.name;
+        case 'param': return symbol.param.name;
+        case 'routine': return symbol.routine.name;
+        case 'type': return symbol.type.name;
+        case 'label': return symbol.label.name;
+    }
+}
+
+/** A name written in another case than declared: KRL ignores the case, so it is a warning only. */
+function checkCase(ref: Span & { name: string }, declared: string, settings: DiagnosticSettings, add: Add): void {
+    if (settings.nameCase && ref.name !== declared) {
+        add(ref, 'warning', 'nameCase', `${ref.name} is declared as ${declared} (KRL ignores the case)`, { name: declared });
+    }
+}
+
+/** Undeclared variables and points, unknown routines and labels, too many arguments, the case of names. */
 function checkNames(project: KrlProject, doc: KrlDocument, settings: DiagnosticSettings, complete: boolean, add: Add): void {
     const targets = new Map<string, Tok>();
     doc.lines.forEach((L, ln) => {
@@ -147,10 +175,24 @@ function checkNames(project: KrlProject, doc: KrlDocument, settings: DiagnosticS
     for (const ref of doc.refs) {
         switch (ref.role) {
             case 'read': case 'write': {
-                if (project.resolveVariable(doc.path, ref.line, ref.name)) { break; }
-                if (project.resolveRoutine(doc.path, ref.name) || project.resolveType(doc.path, ref.name)) { break; }
+                const symbol = project.resolveVariable(doc.path, ref.line, ref.name)
+                    ?? project.resolveRoutine(doc.path, ref.name) ?? project.resolveType(doc.path, ref.name);
+                if (symbol) { checkCase(ref, declaredName(symbol), settings, add); break; }
                 const motion = doc.lines[ref.line].tokens[0]?.text.toUpperCase() ?? '';
                 if (!settings.undeclared) { break; }
+                // declared, but where this file does not see it: another module's data list (not GLOBAL) or another routine
+                const elsewhere = project.declarationAnywhere(doc.path, ref.name);
+                if (elsewhere?.kind === 'decl') {
+                    if (settings.declaredElsewhere) {
+                        const d = elsewhere.decl;
+                        const file = elsewhere.doc.path.replace(/^.*[\\/]/, '');
+                        add(ref, 'warning', 'declaredElsewhere', d.routine
+                            ? `${ref.name} is declared in routine ${d.routine.name} (${file}), not where it is used`
+                            : `${ref.name} is declared in ${file}, which other modules do not see (${d.isGlobal ? 'the data list is not PUBLIC' : 'it is not GLOBAL'})`,
+                        { name: ref.name, type: d.type, dims: d.dims, dat: datName });
+                    }
+                    break;
+                }
                 // the controller does not accept the program; a KUKA name of $config.dat is missing with that file
                 if (!complete && isStandardConfigName(ref.name)) {
                     add(ref, 'error', 'undeclared', `${ref.name} is not declared: KUKA declares it in $config.dat, which is not in this workspace`);
@@ -165,6 +207,7 @@ function checkNames(project: KrlProject, doc: KrlDocument, settings: DiagnosticS
             case 'call': {
                 const routine = project.resolveRoutine(doc.path, ref.name);
                 if (routine) {
+                    checkCase(ref, declaredName(routine), settings, add);
                     if (routine.kind === 'routine') { checkArgumentCount(doc, ref, routine.routine.params.length, add); }
                     break;
                 }
@@ -176,11 +219,15 @@ function checkNames(project: KrlProject, doc: KrlDocument, settings: DiagnosticS
                 }
                 break;
             }
-            case 'goto':
-                if (!project.resolveLabel(doc.path, ref.line, ref.name)) {
+            case 'goto': {
+                const label = project.resolveLabel(doc.path, ref.line, ref.name);
+                if (label) {
+                    checkCase(ref, declaredName(label), settings, add);
+                } else {
                     add(ref, 'error', 'unknownLabel', `Label ${ref.name} is not defined in this routine`);
                 }
                 break;
+            }
             default: break;
         }
     }
@@ -242,15 +289,15 @@ function checkUnused(project: KrlProject, doc: KrlDocument, add: Add): void {
     }
 }
 
-/** Write-protected system variables and I/O indices out of range. */
+/** Write-protected system variables, I/O indices out of range, the case of the names. */
 function checkSystemVariables(doc: KrlDocument, settings: DiagnosticSettings, add: Add): void {
     for (const ref of doc.sysRefs) {
         if (ref.write && isWriteProtected(ref.name)) {
             add(ref, 'error', 'writeProtected', `${ref.name.toUpperCase()} is write-protected`);
         }
-        if (Number.isNaN(ref.index)) { continue; }
         const sys = systemVariable(ref.name);
-        if (!sys?.index) { continue; }
+        if (sys) { checkCase(ref, sys.name, settings, add); }
+        if (Number.isNaN(ref.index) || !sys?.index) { continue; }
         const isDigitalIo = /^\$(IN|OUT|OUT_C)$/i.test(ref.name);
         const max = isDigitalIo ? Math.min(settings.ioCount, sys.index[1]) : sys.index[1];
         if (ref.index < sys.index[0] || ref.index > max) {

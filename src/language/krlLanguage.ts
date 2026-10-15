@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { KrlProject, ProjectHost, findKrlFiles } from './krlProject';
+import { readKrlFile } from '../debugger/krlWorkspace';
 import { KrlDocument, KrlIssue, routineAt, isInstruction } from './krlSyntax';
 import { computeDiagnostics, DiagnosticSettings, DEFAULT_DIAGNOSTIC_SETTINGS, inferDeclarationType, defaultInitialValue } from './krlDiagnostics';
 import { computeCompletions, CompletionKind } from './krlCompletion';
@@ -47,7 +48,7 @@ class EditorHost implements ProjectHost {
     readFile(filePath: string): string | undefined {
         const doc = this.open.get(path.resolve(filePath).toLowerCase());
         if (doc) { return doc.getText(); }
-        try { return fs.readFileSync(filePath, 'latin1'); } catch { return undefined; }
+        try { return readKrlFile(filePath); } catch { return undefined; }
     }
 
     version(filePath: string): string {
@@ -68,6 +69,8 @@ function settings(): DiagnosticSettings {
         ioCount: cfg.get<number>('io.count', DEFAULT_DIAGNOSTIC_SETTINGS.ioCount),
         undeclared: cfg.get<boolean>('diagnostics.undeclared', true),
         unused: cfg.get<boolean>('diagnostics.unused', true),
+        nameCase: cfg.get<boolean>('diagnostics.nameCase', false),
+        declaredElsewhere: cfg.get<boolean>('diagnostics.declaredElsewhere', true),
     };
 }
 
@@ -406,9 +409,20 @@ export function registerKrlLanguage(context: vscode.ExtensionContext): void {
 
         vscode.languages.registerCodeActionsProvider(SELECTOR, {
             provideCodeActions(doc, range) {
-                const issues = (lastIssues.get(keyOf(doc.uri.fsPath)) ?? []).filter(i =>
-                    i.line >= range.start.line && i.line <= range.end.line);
-                return issues.flatMap(i => quickFixes(project, doc, i));
+                const all = lastIssues.get(keyOf(doc.uri.fsPath)) ?? [];
+                const issues = all.filter(i => i.line >= range.start.line && i.line <= range.end.line);
+                const actions = issues.flatMap(i => quickFixes(project, doc, i));
+                // names written in another case: all of the file at once
+                const cased = all.filter(i => i.code === 'nameCase');
+                if (cased.length > 1 && issues.some(i => i.code === 'nameCase')) {
+                    const edit = new vscode.WorkspaceEdit();
+                    for (const i of cased) { edit.replace(doc.uri, new vscode.Range(i.line, i.start, i.line, i.end), String(i.data?.name)); }
+                    const fixAll = new vscode.CodeAction(`Write all ${cased.length} names of this file as declared`, vscode.CodeActionKind.QuickFix);
+                    fixAll.edit = edit;
+                    fixAll.diagnostics = [];
+                    actions.push(fixAll);
+                }
+                return actions;
             },
         }, { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }),
 
@@ -526,13 +540,16 @@ function quickFixes(project: KrlProject, doc: vscode.TextDocument, issue: KrlIss
     };
     const data = issue.data ?? {};
     switch (issue.code) {
-        case 'undeclaredPoint': case 'undeclared': {
+        case 'undeclaredPoint': case 'undeclared': case 'declaredElsewhere': {
+            // an array declared elsewhere needs its dimension: no quick fix
+            if (data.dims) { break; }
             const name = String(data.name);
             const datPath = project.companionDatPath(filePath);
             const datName = path.basename(datPath);
-            const types = issue.code === 'undeclaredPoint'
-                ? (data.type === 'E6AXIS' ? ['E6AXIS', 'E6POS'] : /^\s*S?PTP\b/i.test(krlDoc.lines[issue.line].code) ? ['E6POS', 'E6AXIS'] : ['E6POS'])
-                : [inferDeclarationType(project, filePath, issue.line, name)];
+            const types = issue.code === 'declaredElsewhere' ? [String(data.type)]
+                : issue.code === 'undeclaredPoint'
+                    ? (data.type === 'E6AXIS' ? ['E6AXIS', 'E6POS'] : /^\s*S?PTP\b/i.test(krlDoc.lines[issue.line].code) ? ['E6POS', 'E6AXIS'] : ['E6POS'])
+                    : [inferDeclarationType(project, filePath, issue.line, name)];
             types.forEach((type, i) => {
                 if (!/\.dat$/i.test(filePath) || datPath.toLowerCase() === filePath.toLowerCase()) {
                     const edit = new vscode.WorkspaceEdit();
@@ -541,7 +558,7 @@ function quickFixes(project: KrlProject, doc: vscode.TextDocument, issue: KrlIss
                 }
             });
             const routine = routineAt(krlDoc, issue.line);
-            if (routine && issue.code === 'undeclared' && !/\.dat$/i.test(filePath)) {
+            if (routine && issue.code !== 'undeclaredPoint' && !/\.dat$/i.test(filePath)) {
                 const edit = new vscode.WorkspaceEdit();
                 const { line, indent } = localDeclarationPlace(krlDoc, routine.line);
                 edit.insert(doc.uri, new vscode.Position(line, 0), `${indent}DECL ${types[0]} ${name}${types[0] === 'CHAR' ? '[80]' : ''}\n`);
@@ -603,6 +620,12 @@ function quickFixes(project: KrlProject, doc: vscode.TextDocument, issue: KrlIss
             const edit = new vscode.WorkspaceEdit();
             edit.replace(doc.uri, new vscode.Range(issue.line, issue.start, issue.line, issue.end), String(data.name));
             action(`Rename to ${data.name}`, edit, true);
+            break;
+        }
+        case 'nameCase': {
+            const edit = new vscode.WorkspaceEdit();
+            edit.replace(doc.uri, new vscode.Range(issue.line, issue.start, issue.line, issue.end), String(data.name));
+            action(`Write it as ${data.name}`, edit, true);
             break;
         }
         default: break;

@@ -31,6 +31,7 @@ Force the input in **KRL I/O** and the program continues; here it stopped at a b
 - Signature help, inlay hints (velocity, acceleration, approximation of motions), hovers with positions in mm / ° and decoded Status / Turn.
 - Go to definition and references across `.src`, `.dat` and `$config.dat`; F12 on system variables opens a reference.
 - Folding of `;FOLD` regions (inline forms collapsed), formatter and format on save.
+- File icons: KRL files show a robot icon in the Explorer. The file icon theme **KRL (.src, .dat, .sub, $config.dat)** (*Preferences: File Icon Theme*) gives programs, data lists, submit programs and `$config.dat` icons of their own; other files then get a plain icon.
 
 **Debugger: the robot controller simulated**
 
@@ -45,12 +46,26 @@ Force the input in **KRL I/O** and the program continues; here it stopped at a b
 
 1. Open the folder of a robot backup (e.g. `KRC` with `R1/System/$config.dat` and `R1/Mada/$machine.dat`) or the folder of your KRL programs.
 2. Open a `.src` file: completion and checks work right away.
-3. Press **F5** to run it in the simulator (no `launch.json` needed). Use the debug toolbar to change the override and the mode, and the **KRL Robot** and **KRL I/O** views in Run and Debug to watch the robot and force inputs.
+3. Press **F5** to run it in the simulator (no `launch.json` needed), or use the run button at the top right of the editor: **Debug KRL Program**, or **Run KRL Program** (like Ctrl+F5) to run it without stopping at the start or at breakpoints. Use the debug toolbar to change the override and the mode, and the **KRL Robot** and **KRL I/O** views in Run and Debug to watch the robot and force inputs.
 4. Format with **Shift+Alt+F**, or enable `krl-officelite.formatOnSave`.
 
 Requirements: VS Code 1.67 or newer. Nothing else: no Python, no KUKA software.
 
 **Try it:** the repository has a small pick-and-place cell in [`examples/`](https://github.com/danielmuellernavarro/krl-officelite/tree/main/examples). Open `examples/KRC`, open `R1/Program/demo.src` and press F5.
+
+**Recommend it in your robot project.** Without a KRL extension, VS Code opens `.src`, `.dat` and `.sub` files as plain text: F5 and Format Document then look for a debugger and a formatter for *Plain Text* and cannot suggest this extension. Add `.vscode/extensions.json` to the project (or right-click the extension in the Extensions view → **Add to Workspace Recommendations**), and VS Code asks whoever opens the folder to install it:
+
+```json
+{
+    "recommendations": ["krl-officelite.krl-officelite"]
+}
+```
+
+**Another extension opens `.src` / `.dat`?** A file has one language, and when several extensions register `.src` VS Code takes the language of one of them. When it is another extension's language (e.g. `KUKA` of RoboDK's *Industrial Robots*), F5 says that no debugger is installed and Format Document that there is no formatter. Opening such a file, this extension offers **Open as KRL**, which sets in the user settings:
+
+```json
+"files.associations": { "*.src": "krl", "*.dat": "krl", "*.sub": "krl" }
+```
 
 ## The project
 
@@ -119,6 +134,8 @@ Every statement is parsed with its grammar and its expressions; the first error 
 | declaration after the first instruction, name longer than 24 characters, duplicate declaration, `GOTO` to an unknown label, too many arguments, `FOR` counter not `INT` | error | |
 | point of a motion not declared (`PTP XP7`) anywhere: not local, not in the `.dat`, not global | error | declare `E6POS` / `E6AXIS XP7` in the module's `.dat` (created if missing) |
 | name or routine not declared; without `$config.dat` KUKA's names of it (`XHOME`, `BAS`, `PDAT_ACT`, ...) say where they belong | error | declare it in the `.dat` or the routine, typed from its use (`FDAT_ACT=FP1` gives `FDAT`) |
+| name declared only where the file does not see it: in another module's data list (not `GLOBAL` in a `PUBLIC` data list, e.g. `XTEIL_G2A` of `stiften.dat` used in `buersten.src`) or in another routine (setting `diagnostics.declaredElsewhere`) | warning | declare it in the `.dat` or the routine, with the type of the other declaration |
+| variable, routine, label or system variable written in another case than declared (`WZ_FPDM` for `wz_FPDM`, `$out` for `$OUT`); KRL ignores the case, so the program works (setting `diagnostics.nameCase`) | warning | write it, or all names of the file, as declared |
 | unused declaration: local variables, data list entries the module never uses (points left over from deleted motions) | hint, faded | remove the declaration |
 | write access to a write-protected system variable (`$IN`, `$POS_ACT`, ...) | error | |
 | I/O index out of range (`$OUT[5000]`, `$ANIN[33]`) | error | |
@@ -148,6 +165,8 @@ Every statement is parsed with its grammar and its expressions; the first error 
 | `krl-officelite.diagnostics.allFiles` | `true` | show the problems of all KRL files of the workspace, not only the open ones |
 | `krl-officelite.diagnostics.undeclared` | `true` | report names, points and routines that are not declared |
 | `krl-officelite.diagnostics.unused` | `true` | fade unused declarations |
+| `krl-officelite.diagnostics.declaredElsewhere` | `true` | warn about names declared only in another module's data list or another routine |
+| `krl-officelite.diagnostics.nameCase` | `false` | warn when a name is written in another case than declared |
 | `krl-officelite.safety.maxCartesianVelocity` | `2.0` | path velocity limit in m/s |
 | `krl-officelite.io.count` | `4096` | number of digital inputs / outputs (max. 8192) |
 | `krl-officelite.simulation.override` | `100` | override at the start (0 … 100 % `$OV_PRO`, up to 10000 % the simulation runs faster) |
