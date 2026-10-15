@@ -11,6 +11,7 @@ import { registerKrlRobotView } from "./debugger/krlRobotView";
 import { registerKrlIoView } from "./debugger/krlIoView";
 import { registerKrlOverride } from "./debugger/krlOverride";
 import { registerKrlLanguage } from "./language/krlLanguage";
+import { registerKrlFileAssociation } from "./language/krlFileAssociation";
 import { formatKrlLines, FormatOptions, lineEdits } from "./formatter/krlFormatter";
 import { parseKrlDocument } from "./language/krlSyntax";
 
@@ -104,6 +105,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     registerKrlLanguage(context);
+    registerKrlFileAssociation(context);
     registerKrlDebugAdapter(context);
     registerKrlLiveWatch(context);
     registerKrlVariableSearch(context);

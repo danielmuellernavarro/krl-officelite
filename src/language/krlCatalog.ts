@@ -62,7 +62,7 @@ const SYSTEM_VARIABLE_LIST: SystemVariable[] = [
     { name: '$ACC', type: 'ACC', struct: 'ACC', access: 'RW', doc: 'Acceleration of CP motions: `CP` (m/s²), `ORI1`, `ORI2` (°/s²).' },
     { name: '$VEL_AXIS', type: 'INT[]', access: 'RW', unit: '%', range: [1, 100], index: [1, 12], doc: 'Axis velocity of PTP motions in % of the maximum axis velocity.' },
     { name: '$ACC_AXIS', type: 'INT[]', access: 'RW', unit: '%', range: [1, 100], index: [1, 12], doc: 'Axis acceleration of PTP motions in % of the maximum.' },
-    { name: '$VEL_EXTAX', type: 'INT[]', access: 'RW', unit: '%', range: [1, 100], index: [1, 6], doc: 'Velocity of the external axes in % of the maximum.' },
+    { name: '$VEL_EXTAX', type: 'INT[]', access: 'RW', unit: '%', range: [0, 100], index: [1, 6], doc: 'Velocity of the external axes in % of the maximum.' },
     { name: '$ACC_EXTAX', type: 'INT[]', access: 'RW', unit: '%', range: [1, 100], index: [1, 6], doc: 'Acceleration of the external axes in % of the maximum.' },
     { name: '$APO', type: 'APO', struct: 'APO', access: 'RW', doc: 'Approximate positioning: `CDIS` distance (mm), `CORI` orientation (°), `CVEL` velocity (%), `CPTP` PTP (%).' },
     { name: '$ORI_TYPE', type: 'ORI_TYPE', enumType: 'ORI_TYPE', access: 'RW', doc: 'Orientation control of CP motions: `#CONSTANT`, `#VAR` or `#JOINT`.' },
@@ -218,8 +218,13 @@ const BUILTIN_LIST: BuiltinRoutine[] = [
     { name: 'EK', returnType: 'FRAME', params: [p('Root', 'FRAME'), p('Mech_Type', 'ESYS'), p('Offset', 'FRAME')], doc: 'Base of an external kinematic system (BASE on an external axis).' },
     { name: 'LK', returnType: 'FRAME', params: [p('Root', 'FRAME'), p('Ip_Addr[]', 'CHAR[]'), p('Offset', 'FRAME'), p('Mech_Type', 'ESYS')], doc: 'Base of a linked (RoboTeam) kinematic system.' },
     { name: 'EB', returnType: 'FRAME', params: [p('Mach_Idx', 'INT'), p('Offset', 'FRAME')], doc: 'Base of an external kinematic system defined in the machine data.' },
+    { name: 'EB_ABS', returnType: 'FRAME', params: [p('Root', 'FRAME'), p('Name[]', 'CHAR[]'), p('Offset', 'FRAME'), p('Part_Nbr', 'INT')], doc: 'Base on a conveyor (`MACHINE_DEF[i].NAME[]`) for the part `Part_Nbr`; BAS.SRC sets `$BASE` with it.' },
+    { name: 'EB_TEST', returnType: 'FRAME', params: [p('Root', 'FRAME'), p('Name[]', 'CHAR[]'), p('Offset', 'FRAME'), p('Part_Nbr', 'INT'), p('Part_Present', 'BOOL', 'OUT')], doc: 'Base on a conveyor like `EB_ABS`; `Part_Present` tells whether the part is on the conveyor (BAS.SRC).' },
+    { name: 'EO', returnType: 'REAL', params: [p('Name[]', 'CHAR[]'), p('Offset', 'REAL')], doc: 'Joint offset of an external device; BAS.SRC sets `$JOINT_OFFSET` with it.' },
     // system functions of option and technology packages
     { name: 'ISMESSAGESET', returnType: 'BOOL', params: [p('Message', 'INT')], doc: 'TRUE while the system message is active.' },
+    { name: 'GET_COLLMON_SET', returnType: '', params: [p('Setting_Idx', 'INT'), p('Values[]', 'INT[]', 'OUT')], doc: 'Reads the tolerances of a collision monitoring data set (collmonlib.src).' },
+    { name: 'Test_BRAKE', returnType: 'BRAKE_STATE', params: [p('Axes', 'INT', 'IN', 'bit mask of the axes'), p('Force', 'BOOL')], doc: 'Brake test of the axes of the bit mask (BrakeTest package); returns the brake state, e.g. `#BT_UNTESTED`.' },
     { name: 'MD_CMD', returnType: 'INT', params: [p('Device[]', 'CHAR[]'), p('Command[]', 'CHAR[]'), p('Parameter[]', 'CHAR[]', 'IN', '', true)], doc: 'Command to a system device (e.g. brake test).' },
     { name: 'MD_SETSTATE', returnType: 'INT', params: [p('Device[]', 'CHAR[]'), p('State', 'INT', 'IN', '', true)], doc: 'Sets the state of a system device (e.g. brake test).' },
     // functions the spline inline forms use in WITH clauses

@@ -2,7 +2,7 @@
     "name": "krl-officelite",
     "displayName": "KUKA KRL OfficeLite",
     "description": "KUKA KRL for VS Code: smart completion, error checking with quick fixes, formatter and a debugger that simulates the robot controller (advance run, motion timing, I/O, override, T1/T2/AUT modes)",
-    "version": "2.0.2",
+    "version": "2.0.3",
     "publisher": "krl-officelite",
     "license": "MIT",
     "engines": {
@@ -42,7 +42,11 @@
     },
     "activationEvents": [
         "onLanguage:krl",
+        "onLanguage:KUKA",
+        "onLanguage:kukas",
         "onDebugResolve:krl",
+        "onCommand:krl.debugProgram",
+        "onCommand:krl.runProgram",
         "onView:krlLiveWatch",
         "onCommand:krl.searchVariables",
         "onView:krlRobot",
@@ -108,6 +112,16 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Fade declarations that are never used: local variables and the data list entries of a module (e.g. points left over from deleted motions)."
+                },
+                "krl-officelite.diagnostics.declaredElsewhere": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Warn when a name is not declared where it is used but elsewhere in the project: in the data list of another module (without `GLOBAL` in a `PUBLIC` data list) or in another routine, e.g. `XTEIL_G2A` of `stiften.dat` used in `buersten.src`. Off: these names are not reported. Names declared nowhere stay errors (`diagnostics.undeclared`)."
+                },
+                "krl-officelite.diagnostics.nameCase": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "Warn when a variable, routine, label or system variable is written in another case than it is declared, e.g. `WZ_FPDM` for `wz_FPDM`. Off by default: KRL ignores the case, so the program works either way. The quick fix writes the name, or all names of the file, as declared."
                 },
                 "krl-officelite.safety.maxCartesianVelocity": {
                     "type": "number",
@@ -190,7 +204,18 @@
                     ".src",
                     ".sub"
                 ],
-                "configuration": "./language-configuration.json"
+                "configuration": "./language-configuration.json",
+                "icon": {
+                    "light": "./images/fileicons/krl.svg",
+                    "dark": "./images/fileicons/krl.svg"
+                }
+            }
+        ],
+        "iconThemes": [
+            {
+                "id": "krl-officelite-icons",
+                "label": "KRL (.src, .dat, .sub, $config.dat)",
+                "path": "./images/fileicons/krl-icon-theme.json"
             }
         ],
         "grammars": [
@@ -231,6 +256,18 @@
             ]
         },
         "commands": [
+            {
+                "command": "krl.debugProgram",
+                "title": "Debug KRL Program",
+                "category": "KRL",
+                "icon": "$(debug-alt)"
+            },
+            {
+                "command": "krl.runProgram",
+                "title": "Run KRL Program",
+                "category": "KRL",
+                "icon": "$(play)"
+            },
             {
                 "command": "krl.searchVariables",
                 "title": "Search Variables",
@@ -545,6 +582,18 @@
             }
         ],
         "menus": {
+            "editor/title/run": [
+                {
+                    "command": "krl.debugProgram",
+                    "when": "resourceLangId == krl && resourceScheme == file && resourceExtname =~ /^\\.(src|sub)$/i && !isInDiffEditor && !inDebugMode",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "krl.runProgram",
+                    "when": "resourceLangId == krl && resourceScheme == file && resourceExtname =~ /^\\.(src|sub)$/i && !isInDiffEditor && !inDebugMode",
+                    "group": "navigation@1"
+                }
+            ],
             "view/title": [
                 {
                     "command": "krl.messages.acknowledgeAll",
@@ -701,6 +750,14 @@
                 }
             ],
             "commandPalette": [
+                {
+                    "command": "krl.debugProgram",
+                    "when": "editorLangId == krl && resourceScheme == file && resourceExtname =~ /^\\.(src|sub)$/i"
+                },
+                {
+                    "command": "krl.runProgram",
+                    "when": "editorLangId == krl && resourceScheme == file && resourceExtname =~ /^\\.(src|sub)$/i"
+                },
                 {
                     "command": "krl.messages.acknowledgeAll",
                     "when": "debugType == 'krl'"

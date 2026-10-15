@@ -248,7 +248,8 @@ export function isInstruction(kind: LineKind): boolean {
 export function lineKind(code: string): LineKind {
     const t = code.trim();
     if (t === '') { return 'blank'; }
-    if (t.startsWith('&')) { return 'header'; }
+    // &ACCESS, &REL, &PARAM ...; also after a byte order mark of a UTF-8 file decoded as Windows-1252
+    if (/^(?:﻿|ï»¿)?&/.test(t)) { return 'header'; }
     if (/^(?:GLOBAL\s+)?INTERRUPT\b/i.test(t)) { return 'interrupt'; }
     if (/^TRIGGER\b/i.test(t)) { return 'trigger'; }
     if (/^(?:GLOBAL\s+)?(?:EXT|EXTFCT|EXTP|EXTFCTP)\b/i.test(t)) { return 'ext'; }

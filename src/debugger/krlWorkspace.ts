@@ -34,6 +34,18 @@ const MAX_DEPTH = 8;
 /** machine data and tooling folders that contain no robot programs */
 const SKIP_DIRS = /^(mada|node_modules|\.git|\.vscode|\.vs|out)$/i;
 
+/**
+ * The text of a KRL file. The controller writes Windows-1252 (read as Latin-1); a file
+ * starting with a UTF-8 byte order mark (saved by a PC editor) is UTF-8, read without the
+ * mark so that `&ACCESS` stays the start of its first line.
+ */
+export function readKrlFile(filePath: string): string {
+    const bytes = fs.readFileSync(filePath);
+    return bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf
+        ? bytes.subarray(3).toString('utf8')
+        : bytes.toString('latin1');
+}
+
 function listDir(dir: string): fs.Dirent[] {
     try {
         return fs.readdirSync(dir, { withFileTypes: true });

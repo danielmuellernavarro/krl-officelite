@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { KrlRuntime, RunMode, formatOverride } from './krlRuntime';
 import { KrlMode, KRL_MODES } from './krlMotion';
-import { resolveLaunchFiles } from './krlWorkspace';
+import { resolveLaunchFiles, readKrlFile } from './krlWorkspace';
 import { parseKrlDocument } from '../language/krlSyntax';
 
 // ---------------------------------------------------------------------------
@@ -24,6 +24,23 @@ export function registerKrlDebugAdapter(context: vscode.ExtensionContext): void 
     );
     context.subscriptions.push(
         vscode.debug.registerDebugConfigurationProvider('krl', new KrlConfigurationProvider())
+    );
+
+    // Run / Debug KRL Program: the run button of the editor title passes the file, the Command Palette nothing
+    const startProgram = (noDebug: boolean) => (uri?: vscode.Uri) => {
+        const program = uri instanceof vscode.Uri ? uri : vscode.window.activeTextEditor?.document.uri;
+        if (!program || program.scheme !== 'file') { return; }
+        return vscode.debug.startDebugging(vscode.workspace.getWorkspaceFolder(program), {
+            type: 'krl',
+            request: 'launch',
+            name: noDebug ? 'KRL: Run' : 'KRL: Debug',
+            program: program.fsPath,
+            stopOnEntry: !noDebug,
+        }, { noDebug });
+    };
+    context.subscriptions.push(
+        vscode.commands.registerCommand('krl.debugProgram', startProgram(false)),
+        vscode.commands.registerCommand('krl.runProgram', startProgram(true)),
     );
 }
 
@@ -150,7 +167,8 @@ class KrlDebugSession implements vscode.DebugAdapter {
     }
 
     private async onLaunch(req: DapRequest, args: any): Promise<void> {
-        this.stopOnEntry = args.stopOnEntry !== false;
+        // Run Without Debugging (Ctrl+F5, Run KRL Program) does not stop at the start; VS Code sends it no breakpoints
+        this.stopOnEntry = args.stopOnEntry !== false && !args.noDebug;
         const files = resolveLaunchFiles({
             program: args.program ?? '',
             submitPrograms: args.submitPrograms,
@@ -229,7 +247,7 @@ class KrlDebugSession implements vscode.DebugAdapter {
         const withErrors = new Set<string>();
         for (const file of files) {
             let text: string;
-            try { text = fs.readFileSync(file, 'latin1'); } catch { continue; }
+            try { text = readKrlFile(file); } catch { continue; }
             for (const issue of parseKrlDocument(file, text).issues) {
                 if (issue.severity !== 'error') { continue; }
                 total++;

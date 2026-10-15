@@ -16,6 +16,7 @@ import {
 } from './krlSyntax';
 import { catalogStructMembers, systemVariable, systemEnumValues, POSITION_TYPES } from './krlCatalog';
 import { StructMember } from '../debugger/krlValue';
+import { readKrlFile } from '../debugger/krlWorkspace';
 
 export interface ProjectHost {
     /** text of a file: the open editor's, else the file on disk; undefined if it cannot be read */
@@ -29,7 +30,7 @@ export interface ProjectHost {
 /** Reads files from disk (KRL files are Latin-1 / Windows-1252). */
 export const diskHost: ProjectHost = {
     readFile(filePath) {
-        try { return fs.readFileSync(filePath, 'latin1'); } catch { return undefined; }
+        try { return readKrlFile(filePath); } catch { return undefined; }
     },
     version(filePath) {
         try { return String(fs.statSync(filePath).mtimeMs); } catch { return 'missing'; }
@@ -57,6 +58,8 @@ interface ProjectIndex extends ProjectInfo {
     globals: Map<string, KrlSymbol>;
     routines: Map<string, KrlSymbol>;
     types: Map<string, KrlSymbol>;
+    /** every variable, constant and signal declared in the project (data lists and routines), the first per name */
+    declarations: Map<string, KrlSymbol>;
     /** every name referenced anywhere in the project */
     referenced: Set<string>;
 }
@@ -199,7 +202,7 @@ export class KrlProject {
             if (info.configDat && !files.some(f => keyOfPath(f) === keyOfPath(info.configDat!))) { files.push(info.configDat); }
             project = {
                 ...info, files, stale: true,
-                globals: new Map(), routines: new Map(), types: new Map(), referenced: new Set(),
+                globals: new Map(), routines: new Map(), types: new Map(), declarations: new Map(), referenced: new Set(),
             };
             this.projects.set(rootKey, project);
             for (const f of files) { this.rootOfFile.set(keyOfPath(f), rootKey); }
@@ -236,6 +239,7 @@ export class KrlProject {
         project.globals.clear();
         project.routines.clear();
         project.types.clear();
+        project.declarations.clear();
         project.referenced.clear();
         const configKey = project.configDat ? keyOfPath(project.configDat) : '';
         // $config.dat first: its declarations win
@@ -244,6 +248,9 @@ export class KrlProject {
             const isConfig = keyOfPath(doc.path) === configKey || /^\$/.test(path.basename(doc.path));
             const exports = isConfig || (!!doc.defdat?.isPublic);
             for (const d of doc.decls) {
+                if ((d.kind === 'var' || d.kind === 'const' || d.kind === 'signal') && !project.declarations.has(d.key)) {
+                    project.declarations.set(d.key, { kind: 'decl', doc, decl: d });
+                }
                 if (d.routine) { continue; }
                 if ((isConfig || (exports && d.isGlobal)) && !project.globals.has(d.key)) {
                     project.globals.set(d.key, { kind: 'decl', doc, decl: d });
@@ -323,6 +330,14 @@ export class KrlProject {
         if (moduleLevel) { return { kind: 'decl', doc, decl: moduleLevel }; }
         const global = this.build(filePath).globals.get(key);
         return global && global.kind === 'decl' && global.decl.kind !== 'struc' && global.decl.kind !== 'enum' ? global : undefined;
+    }
+
+    /**
+     * A variable declared somewhere in the project, also where the file cannot see it: in the
+     * data list of another module (without GLOBAL in a PUBLIC data list) or in another routine.
+     */
+    declarationAnywhere(filePath: string, name: string): KrlSymbol | undefined {
+        return this.build(filePath).declarations.get(name.toLowerCase());
     }
 
     /** A routine callable from a file: its own, EXT declarations, module routines and GLOBAL routines. */

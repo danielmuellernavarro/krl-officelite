@@ -1,5 +1,17 @@
 # Change Log
 
+### 2.0.3
+
+- **Debug KRL Program** and **Run KRL Program** in the run button at the top right of `.src` / `.sub` editors and in the Command Palette. Run Without Debugging (also Ctrl+F5) no longer stops at the first line.
+- When another extension opens `.src` / `.dat` files in its own language (e.g. `KUKA` of RoboDK's Industrial Robots), F5 reported that no debugger was installed and Format Document that there was no formatter. Opening such a file now offers to open KRL files as KRL (`files.associations`).
+- The example project recommends the extension in `.vscode/extensions.json`, so VS Code offers to install it. The README shows how to do the same in your robot projects: without a KRL extension VS Code opens `.src` files as plain text and cannot suggest this one for F5 or Format Document.
+- A name declared only where the file cannot see it is a warning that says where it is declared, no longer the error *is not declared*: in the data list of another module without `GLOBAL` (e.g. `XTEIL_G2A` of `stiften.dat` used as `xteil_g2a` in `buersten.src`), in a data list that is not `PUBLIC`, or in another routine. Setting `krl-officelite.diagnostics.declaredElsewhere` (on by default). Names declared nowhere stay errors.
+- Names written in another case than declared (`WZ_FPDM` for `wz_FPDM`, `$out` for `$OUT`) are a warning, with quick fixes that write the name, or all names of the file, as declared. KRL ignores the case, so it is no error. Off by default; turn it on with `krl-officelite.diagnostics.nameCase`.
+- File icons: KRL files show a robot icon in the Explorer, tabs and breadcrumbs. The file icon theme *KRL (.src, .dat, .sub, $config.dat)* shows programs (`.src`), data lists (`.dat`), submit programs (`.sub`) and `$config.dat` with icons of their own.
+- KUKA system functions used by BAS.SRC and the technology packages are known like `ABS` (completion, hover, signature help), no longer *Unknown routine*: `EB_ABS`, `EB_TEST`, `EO`, `GET_COLLMON_SET`, `Test_BRAKE`.
+- Files saved as UTF-8 with a byte order mark (e.g. `MqttConfig.dat`): `&ACCESS  RV` in the first line is the header again instead of the errors *Unexpected character 'ï'*, *ACCESS is not declared* and *Statement outside of a DEF ... END routine*. Such files are read as UTF-8 (umlauts in strings and comments), in the checks and in the debugger.
+- Expressions with variables are no longer checked as if the variables were 0: KUKA's BAS.SRC got warnings like `$VEL_EXTAX = 0 is outside of 1 … 100 %` for `$VEL_EXTAX[I]=VEL*RedVelExAx[I]/100.0`, and inlay hints showed `VEL: 0 m/s` for `$VEL.CP` set by an expression. `$VEL_EXTAX` may be 0.
+
 ### 2.0.2
 
 - Marketplace page: screenshots of the hovers, diagnostics with quick fixes and the debugger.

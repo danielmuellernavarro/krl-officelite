@@ -8,5 +8,6 @@ test*
 .suo
 .sqlite
 .vscode/
+!examples/KRC/.vscode/
 .vs/
 package-lock.json
