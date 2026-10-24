@@ -10,7 +10,8 @@ export type KrlValue =
     | { t: 'bool'; v: boolean }
     | { t: 'char'; v: string }
     | { t: 'str'; v: string }
-    | { t: 'enum'; v: string }
+    /** `type`: the ENUM type of the variable holding it, when declared with one */
+    | { t: 'enum'; v: string; type?: string }
     | { t: 'struct'; name: string; v: Map<string, KrlValue> }
     | { t: 'array'; v: KrlValue[] }
     /** no value; `type`: a declared variable that has not been assigned (INT, REAL, ...) */
@@ -98,6 +99,8 @@ const BUILTIN_STRUCTS: Record<string, StructMember[]> = {
     'VEL':  m('REAL', 'CP', 'ORI1', 'ORI2'),
     'ACC':  m('REAL', 'CP', 'ORI1', 'ORI2'),
     'APO':  m('REAL', 'CDIS', 'CVEL', 'CPTP', 'CORI'),
+    // $JERK, $JERK_MA (BAS.SRC: SJERK)
+    'JERK_STRUC': [...m('REAL', 'CP', 'ORI'), { name: 'AX', type: 'E6AXIS', dims: [] }],
     'LOAD': [...m('REAL', 'M'), ...m('FRAME', 'CM'), ...m('REAL', 'J')],
     'ERR':  m('INT', 'NUMBER', 'PHASE', 'MODULE', 'LINE', 'TYPE', 'STATE'),
     // messages and dialogs: SET_KRLMSG / SET_KRLDLG
@@ -196,6 +199,10 @@ export function cloneValue(v: KrlValue): KrlValue {
  */
 export function assignmentValue(old: KrlValue | undefined, value: KrlValue): KrlValue {
     if (!old) { return cloneValue(value); }
+    // an ENUM variable keeps its type (the Variables view offers its literals)
+    if (value.t === 'enum' && (old.t === 'enum' || old.t === 'undef') && old.type && !/^(?:INT|REAL|BOOL|CHAR)$/.test(old.type)) {
+        return { t: 'enum', v: value.v, type: old.type };
+    }
     // a declared variable without value: converted like a variable of its type
     if (old.t === 'undef' && old.type) {
         if (value.t === 'undef') { return cloneValue(old); }

@@ -10,6 +10,7 @@ import { registerKrlMessages } from "./debugger/krlMessages";
 import { registerKrlRobotView } from "./debugger/krlRobotView";
 import { registerKrlIoView } from "./debugger/krlIoView";
 import { registerKrlOverride } from "./debugger/krlOverride";
+import { registerKrlValueEdit } from "./debugger/krlValueEdit";
 import { registerKrlLanguage } from "./language/krlLanguage";
 import { registerKrlFileAssociation } from "./language/krlFileAssociation";
 import { formatKrlLines, FormatOptions, lineEdits } from "./formatter/krlFormatter";
@@ -115,4 +116,5 @@ export function activate(context: vscode.ExtensionContext) {
     registerKrlRobotView(context);
     registerKrlIoView(context);
     registerKrlOverride(context);
+    registerKrlValueEdit(context);
 }

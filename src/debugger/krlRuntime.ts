@@ -19,6 +19,7 @@ import {
 } from './krlValue';
 import { evaluateExpression } from './krlExpr';
 import { findConfigDat, findMachineData, readKrlFile } from './krlWorkspace';
+import { systemEnums, systemEnumValues, systemVariable } from '../language/krlCatalog';
 import { componentText, normalizeEditedValue, positionSummary, matrixOf, formatReal } from './krlRobotFormat';
 import {
     RobotCharacteristics, RobotPose, MotionTiming, MotionKind, MotionRequest, KrlMode, KRL_MODES, Arc, Vec3, PathLimits, STANDARD_ROBOT, DEFAULT_RAISE_TIME_S,
@@ -197,6 +198,8 @@ export interface VariableEntry {
     indexedVariables?: number;
     /** KRL expression for the variable: enables Add to Watch / Copy as Expression */
     evaluateName?: string;
+    /** BOOL and ENUM variables: actions of the Variables view (toggle, pick a literal of the ENUM) */
+    menuContext?: 'krlBool' | 'krlEnum';
 }
 
 export interface ThreadView {
@@ -350,6 +353,42 @@ function moduleKeyOf(fileKey: string): string {
     return fileKey.replace(/\.[^.\\/]+$/, '');
 }
 
+/** Blocks whose lines belong together: a block selection does not go into them from outside */
+const BLOCK_START = new Set(['if', 'for', 'while', 'loop', 'repeat', 'switch']);
+const BLOCK_END = new Set(['endif', 'endfor', 'endwhile', 'endloop', 'until', 'endswitch']);
+const SPLINE_START = /^(?:PTP_)?SPLINE\b|^TIME_BLOCK\s+START\b/i;
+const SPLINE_END = /^ENDSPLINE\b|^TIME_BLOCK\s+END\b/i;
+
+/** The statement of a line; on the ;FOLD line of an inline form the statement in the fold. -1 if none. */
+function statementAt(prog: KrlProgram, line: number): number {
+    const direct = prog.lineToIndex[line] ?? -1;
+    if (direct >= 0) { return direct; }
+    let lines: string[];
+    try { lines = readKrlFile(prog.path).split(/\r?\n/); } catch { return -1; }
+    if (!/^\s*;\s*FOLD\b/i.test(lines[line] ?? '')) { return -1; }
+    let depth = 0;
+    for (let l = line; l < lines.length; l++) {
+        if (/^\s*;\s*FOLD\b/i.test(lines[l])) { depth++; continue; }
+        if (/^\s*;\s*ENDFOLD\b/i.test(lines[l])) {
+            if (--depth === 0) { return -1; }
+            continue;
+        }
+        if ((prog.lineToIndex[l] ?? -1) >= 0) { return prog.lineToIndex[l]; }
+    }
+    return -1;
+}
+
+/** The statements opening the blocks (IF, FOR, ..., SPLINE) that contain a statement of a routine, outermost first. */
+function enclosingBlocks(prog: KrlProgram, startIdx: number, index: number): number[] {
+    const open: number[] = [];
+    for (let i = startIdx + 1; i < index && i < prog.stmts.length; i++) {
+        const s = prog.stmts[i];
+        if (BLOCK_START.has(s.kind) || SPLINE_START.test(s.text)) { open.push(i); }
+        else if ((BLOCK_END.has(s.kind) || SPLINE_END.test(s.text)) && open.length > 0) { open.pop(); }
+    }
+    return open;
+}
+
 const boolArray = (n: number) => makeArray([n], () => KRL_BOOL(false));
 const realArray = (n: number) => makeArray([n], () => KRL_REAL(0));
 
@@ -462,6 +501,8 @@ export class KrlRuntime {
     private maxSteps: number;
     private onOutput: (text: string) => void;
     private warned = new Set<string>();
+    /** a system variable the simulator does not have, read by the statement being evaluated */
+    private readUnknownSystem: string | undefined;
     private traceWindowStart = 0;
     private traceCount = 0;
     private traceSuppressed = 0;
@@ -1261,6 +1302,69 @@ export class KrlRuntime {
         }
     }
 
+    /** The source line of the statement a block selection to `line` (0-based) selects, or null when there is none. */
+    blockSelectionLine(file: string, line: number): number | null {
+        const prog = this.programs.get(keyOf(file));
+        const index = prog ? statementAt(prog, line) : -1;
+        return prog && index >= 0 ? prog.stmts[index].line : null;
+    }
+
+    /**
+     * Block selection (Jump to Cursor), like on the controller: the program pointer of an
+     * interpreter to a line (0-based). Possible to an instruction of a routine the interpreter
+     * is in (the one where it stopped or a caller), not into a control structure from outside
+     * it (like GOTO), not into a SPLINE or TIME_BLOCK, not to declarations. The advance run is
+     * discarded: the next motion starts where the robot is (BCO run). Returns an error, or null.
+     */
+    selectBlock(threadId: number, file: string, line: number): string | null {
+        const t = this.threadById(threadId);
+        if (!t || t.finished) { return 'The interpreter has ended: restart it first.'; }
+        const progKey = keyOf(file);
+        const prog = this.programs.get(progKey);
+        if (!prog) { return `${path.basename(file)} is not loaded in this session.`; }
+        const index = statementAt(prog, line);
+        if (index < 0) { return 'There is no instruction on this line.'; }
+        const stmt = prog.stmts[index];
+        if (/^(?:decl|struc|enumdef|signal|prog|fct|defdat|enddat|else|case|default)$/.test(stmt.kind)) {
+            return `Block selection to ${stmt.text.split(/\s+/)[0].toUpperCase()} is not possible: select an instruction.`;
+        }
+        // a routine of the call stack: the innermost one containing the line
+        let depth = -1;
+        for (let i = t.stack.length - 1; i >= 0; i--) {
+            const f = t.stack[i];
+            if (f.progKey === progKey && index > f.startIdx && index <= f.endIdx) { depth = i; break; }
+        }
+        if (depth < 0) {
+            return `Block selection only in the routines ${t.name} is in: ${t.stack.map(f => f.functionName.toUpperCase()).join(' > ')}.`;
+        }
+        const frame = t.stack[depth];
+        // where it is in that routine: the next statement, in a caller the CALL
+        const here = depth === t.stack.length - 1 ? frame.pc : Math.max(frame.startIdx + 1, t.stack[depth + 1].returnPc - 1);
+        const target = enclosingBlocks(prog, frame.startIdx, index);
+        const current = enclosingBlocks(prog, frame.startIdx, here);
+        const spline = target.find(b => SPLINE_START.test(prog.stmts[b].text));
+        if (spline !== undefined) {
+            return `Block selection into a ${prog.stmts[spline].text.split(/\s+/)[0].toUpperCase()} block is not possible: select its first line (line ${prog.stmts[spline].line + 1}).`;
+        }
+        const into = target.find((b, i) => current[i] !== b);
+        if (into !== undefined) {
+            const keyword = prog.stmts[into].text.split(/[\s(]+/)[0].toUpperCase();
+            return `Block selection into ${keyword} (line ${prog.stmts[into].line + 1}) from outside is not possible, like on the controller: select a line outside it or the ${keyword} line.`;
+        }
+        // the routines it was called from are left, and the loops the jump leaves end
+        t.stack.length = depth + 1;
+        frame.pc = index;
+        for (const forIdx of [...frame.forLoops.keys()]) {
+            if (!target.includes(forIdx)) { frame.forLoops.delete(forIdx); }
+        }
+        t.wait = null;
+        const discarded = t.motions.length;
+        t.motions = [];
+        this.onOutput(`[${t.name}] block selection: ${path.basename(prog.path)}:${stmt.line + 1}`
+            + `${discarded > 0 ? ` (${discarded} planned motion${discarded === 1 ? '' : 's'} discarded; the next motion starts where the robot is)` : ''}`);
+        return null;
+    }
+
     /** SUB programs that are loaded (callable as subprograms) but not running in a submit interpreter. */
     idleSubmitPrograms(): string[] {
         const running = new Set(this.threads.filter(t => !t.finished).map(t => t.fileKey));
@@ -1444,11 +1548,59 @@ export class KrlRuntime {
     private makeVariable(name: string, v: KrlValue, sysPath?: string, path = sysPath, display?: string): VariableEntry {
         const entry: VariableEntry = { name, type: typeLabel(v), value: display ?? displayValue(v), reference: 0 };
         if (path !== undefined) { entry.evaluateName = path; }
+        if (v.t === 'bool' || (v.t === 'undef' && v.type === 'BOOL')) {
+            entry.type = 'BOOL';
+            entry.menuContext = 'krlBool';
+        } else {
+            const enumType = this.enumTypeOf(v, sysPath);
+            if (enumType) { entry.type = enumType; entry.menuContext = 'krlEnum'; }
+        }
         if ((v.t === 'struct' && v.v.size > 0) || (v.t === 'array' && v.v.length > 0 && !isCharArray(v))) {
             entry.reference = this.registerHandle({ kind: 'value', value: v, sysPath, path });
             if (v.t === 'array') { entry.indexedVariables = v.v.length; }
         }
         return entry;
+    }
+
+    /** An ENUM variable takes only the literals of its type: the error, or undefined when the value is one. */
+    private notEnumLiteral(current: VariableEntry | null | undefined, valueText: string): string | undefined {
+        if (current?.menuContext !== 'krlEnum') { return undefined; }
+        const literals = this.enumLiterals(current.type);
+        const text = valueText.trim();
+        return literals.some(l => l.toLowerCase() === text.toLowerCase()) ? undefined : `${text} is not a value of ${current.type}: ${literals.join(', ')}`;
+    }
+
+    /**
+     * `expression = value` from an action of the editor (CodeLens, Change Value): the value
+     * may be written as shown, like in the Variables view; an ENUM takes its literals only.
+     */
+    assignForDebugger(expression: string, frameId: number | undefined, valueText: string): VariableEntry | string {
+        const current = this.evaluateForDebugger(expression, frameId, false);
+        if (!current) { return `cannot evaluate ${expression}`; }
+        const notLiteral = this.notEnumLiteral(current, valueText);
+        if (notLiteral) { return notLiteral; }
+        return this.evaluateForDebugger(`${expression} = ${normalizeEditedValue(valueText)}`, frameId, true) ?? `cannot set ${expression} to ${valueText.trim()}`;
+    }
+
+    /** The literals of an ENUM type (with #): declared in the data lists, else KUKA's system ENUMs. */
+    enumLiterals(type: string): string[] {
+        const values = this.enumTypes.get(type.toLowerCase()) ?? systemEnumValues(type) ?? [];
+        return values.map(v => (v.startsWith('#') ? v : `#${v}`));
+    }
+
+    /** The ENUM type of a value: declared with the variable, of the system variable, else the only type having the literal. */
+    private enumTypeOf(v: KrlValue, sysPath?: string): string | undefined {
+        if ((v.t === 'enum' || v.t === 'undef') && v.type && this.enumLiterals(v.type).length > 0) { return v.type.toUpperCase(); }
+        if (v.t !== 'enum') { return undefined; }
+        const sys = sysPath ? systemVariable(sysPath)?.enumType : undefined;
+        if (sys) { return sys; }
+        const literal = v.v.replace(/^#/, '').toLowerCase();
+        const has = (values: string[]) => values.some(x => x.replace(/^#/, '').toLowerCase() === literal);
+        const types = [
+            ...[...this.enumTypes].filter(([, values]) => has(values)).map(([type]) => type.toUpperCase()),
+            ...systemEnums().filter(([, values]) => has(values)).map(([type]) => type),
+        ];
+        return types.length === 1 ? types[0] : undefined;
     }
 
     private displayName(key: string): string {
@@ -1485,6 +1637,8 @@ export class KrlRuntime {
         return {
             ...this.ctxFor(thread),
             invalidRead: (read: InvalidRead) => {
+                // e.g. $JERK_MA of the machine data, read by BAS.SRC (SJERK)
+                if (read.path.startsWith('$') && read.kind === 'undeclared') { this.readUnknownSystem = read.path; }
                 if (read.path.startsWith('$') || (allowUnassigned && read.kind === 'uninitialized')) { return; }
                 throw new KrlStopError(invalidReadMessage(read), read);
             },
@@ -1545,24 +1699,41 @@ export class KrlRuntime {
      * Positions are not split into their components (their value shows them), and
      * module data lists, mostly taught points, come last in case the list is cut.
      */
-    listVariables(): VariableSearchEntry[] {
-        const out: VariableSearchEntry[] = [];
-        const add = (expression: string, v: KrlValue, scope: string, depth: number): void => {
-            if (out.length >= SEARCH_MAX_ENTRIES) { return; }
-            out.push({ expression, value: displayValue(v), type: typeLabel(v), scope });
-            if (depth >= SEARCH_DEPTH) { return; }
-            if (v.t === 'struct' && !isPositionType(v.name)) {
-                for (const [k, x] of v.v) { add(`${expression}.${k.toUpperCase()}`, x, scope, depth + 1); }
-            } else if (v.t === 'array' && v.v.length <= SEARCH_ARRAY_LIMIT && !isCharArray(v)) {
-                v.v.forEach((x, i) => add(elementPath(expression, i + 1), x, scope, depth + 1));
-            }
-        };
+    /**
+     * Variables of all scopes for Search Variables, with structure members and the elements
+     * of small arrays. First the variables themselves, then their members: every variable is
+     * listed, also when the members of large data lists exceed the limit. With a filter, only
+     * the entries whose path or value contains it, searched through all of them.
+     */
+    listVariables(filter = ''): VariableSearchEntry[] {
+        const roots: { expression: string; value: KrlValue; scope: string }[] = [];
         const addMap = (map: Map<string, KrlValue>, scope: string, signalScope?: string): void => {
-            for (const [k, v] of map) { add(this.displayName(k), v, scope, 0); }
+            for (const [k, v] of map) { roots.push({ expression: this.displayName(k), value: v, scope }); }
             for (const sig of this.signals.values()) {
                 if (signalScope !== undefined && sig.scope === signalScope && !map.has(sig.name)) {
-                    add(this.displayName(sig.name), this.readSignal(sig), scope, 0);
+                    roots.push({ expression: this.displayName(sig.name), value: this.readSignal(sig), scope });
                 }
+            }
+        };
+        const add = (expression: string, v: KrlValue, scope: string): void => {
+            if (out.length >= SEARCH_MAX_ENTRIES) { return; }
+            const entry: VariableSearchEntry = { expression, value: displayValue(v), type: typeLabel(v), scope };
+            if (!needle || expression.toLowerCase().includes(needle) || entry.value.toLowerCase().includes(needle)) { out.push(entry); }
+        };
+        const addMembers = (expression: string, v: KrlValue, scope: string, depth: number): void => {
+            if (out.length >= SEARCH_MAX_ENTRIES || depth >= SEARCH_DEPTH) { return; }
+            if (v.t === 'struct' && !isPositionType(v.name)) {
+                for (const [k, x] of v.v) {
+                    const member = `${expression}.${k.toUpperCase()}`;
+                    add(member, x, scope);
+                    addMembers(member, x, scope, depth + 1);
+                }
+            } else if (v.t === 'array' && v.v.length <= SEARCH_ARRAY_LIMIT && !isCharArray(v)) {
+                v.v.forEach((x, i) => {
+                    const element = elementPath(expression, i + 1);
+                    add(element, x, scope);
+                    addMembers(element, x, scope, depth + 1);
+                });
             }
         };
         for (const t of this.threads) {
@@ -1577,14 +1748,18 @@ export class KrlRuntime {
         const listed = new Set(SYSTEM_SCOPE_VARIABLES.map(n => n.toLowerCase()));
         for (const name of SYSTEM_SCOPE_VARIABLES) {
             const value = this.resolveSystemVar(name.toLowerCase());
-            if (value) { add(name, value, 'System', 0); }
+            if (value) { roots.push({ expression: name, value, scope: 'System' }); }
         }
         for (const key of [...this.systemVars.keys()].filter(k => !listed.has(k)).sort()) {
-            add(key.toUpperCase(), this.systemVars.get(key)!, 'System', 0);
+            roots.push({ expression: key.toUpperCase(), value: this.systemVars.get(key)!, scope: 'System' });
         }
         for (const [key, map] of this.datPrivatesByModule) {
             addMap(map, `DAT ${path.basename(key).toUpperCase()}`, key);
         }
+        const needle = filter.trim().toLowerCase();
+        const out: VariableSearchEntry[] = [];
+        for (const r of roots) { add(r.expression, r.value, r.scope); }
+        for (const r of roots) { addMembers(r.expression, r.value, r.scope, 0); }
         return out;
     }
 
@@ -1613,6 +1788,8 @@ export class KrlRuntime {
         // the value as it was shown: "X: 450.0 mm, ..." or "-90.0°"
         const value = evaluateExpression(normalizeEditedValue(valueText), this.ctxFor(thread));
         if (value.t === 'undef') { return `cannot evaluate '${valueText}'`; }
+        const notLiteral = this.notEnumLiteral(this.getVariables(ref).find(e => e.name === name), valueText);
+        if (notLiteral) { return notLiteral; }
         const key = name.toLowerCase();
         const setIn = (map: Map<string, KrlValue>): KrlValue | null => {
             if (!map.has(key)) { return null; }
@@ -1928,11 +2105,19 @@ export class KrlRuntime {
         if (eq < 0) { return; }
         const rhs = text.slice(eq + 1);
         const lhs = text.slice(0, eq).trim();
+        this.readUnknownSystem = undefined;
         let value = strict ? this.eval(thread, rhs) : evaluateExpression(rhs, this.ctxFor(thread));
-        if (value.t === 'undef' && value.type === NOT_SIMULATED) {
-            // the result of a function the simulator does not have: a neutral value, so reading it does not stop
+        // set by invalidRead while the expression was evaluated
+        const unknownSystem = this.readUnknownSystem as string | undefined;
+        if (unknownSystem && hasNoValue(value)) {
+            this.warnOnce(`sys:${unknownSystem.toLowerCase()}`, `[${thread.name}] ${unknownSystem.toUpperCase()} is not simulated (variables set from it get 0 / FALSE)`);
+        }
+        if ((value.t === 'undef' && value.type === NOT_SIMULATED) || (unknownSystem && hasNoValue(value))) {
+            // the result of a function or system variable the simulator does not have (on the controller
+            // they have one): a neutral value, so reading it does not stop
             const old = evaluateExpression(lhs, this.ctxFor(thread));
-            value = old.t === 'undef' && old.type && /^(?:INT|REAL|BOOL|CHAR)$/.test(old.type) ? defaultValue(old.type) : old;
+            value = old.t === 'undef' && old.type && /^(?:INT|REAL|BOOL|CHAR)$/.test(old.type) ? defaultValue(old.type)
+                : old.t === 'struct' && hasNoValue(old) ? this.defaultFor(old.name) : old;
         }
         this.setVariablePath(thread, lhs, value, strict);
     }

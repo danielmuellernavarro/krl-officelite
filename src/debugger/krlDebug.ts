@@ -95,6 +95,8 @@ class KrlDebugSession implements vscode.DebugAdapter {
     private runtime: KrlRuntime | undefined;
     private stopOnEntry = true;
     private disposed = false;
+    /** Jump to Cursor targets by id - 1 */
+    private gotoTargets: { file: string; line: number }[] = [];
     /** breakpoints received before the program was loaded, by source path */
     private pendingBreakpoints = new Map<string, number[]>();
 
@@ -137,12 +139,17 @@ class KrlDebugSession implements vscode.DebugAdapter {
             case 'scopes':                   this.onScopes(req, args); break;
             case 'variables':                this.onVariables(req, args); break;
             case 'setVariable':              this.onSetVariable(req, args); break;
+            case 'krlSetVariable':           this.onKrlSetVariable(req, args); break;
+            case 'krlAssign':                this.onKrlAssign(req, args); break;
+            case 'gotoTargets':              this.onGotoTargets(req, args); break;
+            case 'goto':                     this.onGoto(req, args); break;
+            case 'krlEnumLiterals':          this.respond(req, { literals: this.runtime?.enumLiterals(String(args.type ?? '')) ?? [] }); break;
             case 'evaluate':                 this.onEvaluate(req, args); break;
             case 'krlLiveWatch':             this.onLiveWatch(req, args); break;
             case 'krlInterpreter':           this.onInterpreter(req, args); break;
             case 'krlMessage':               this.onMessage(req, args); break;
             case 'krlMainRun':               this.respond(req, { mainRun: this.runtime?.getMainRun() ?? [], advanceRun: this.runtime?.getAdvanceRun() ?? [] }); break;
-            case 'krlVariables':             this.respond(req, { variables: this.runtime?.listVariables() ?? [] }); break;
+            case 'krlVariables':             this.respond(req, { variables: this.runtime?.listVariables(String(args?.filter ?? '')) ?? [] }); break;
             case 'krlRobot':                 this.respond(req, { entries: this.runtime?.getRobotState() ?? [] }); break;
             case 'krlIo':                    this.onIo(req, args); break;
             case 'krlOverride':              this.onOverride(req, args); break;
@@ -163,7 +170,34 @@ class KrlDebugSession implements vscode.DebugAdapter {
             supportsSetVariable: true,
             supportsTerminateRequest: true,
             supportsExceptionInfoRequest: true,
+            // Jump to Cursor: block selection like on the controller
+            supportsGotoTargetsRequest: true,
         });
+    }
+
+    /** Jump to Cursor: the statement of the line (the motion of an inline form's ;FOLD line). */
+    private onGotoTargets(req: DapRequest, args: any): void {
+        const file: string = args.source?.path ?? '';
+        const line = this.runtime?.blockSelectionLine(file, (args.line ?? 1) - 1);
+        if (line === null || line === undefined) {
+            this.respond(req, { targets: [] });
+            return;
+        }
+        const id = this.gotoTargets.length + 1;
+        this.gotoTargets.push({ file, line });
+        this.respond(req, { targets: [{ id, label: `Block selection: line ${line + 1}`, line: line + 1 }] });
+    }
+
+    private onGoto(req: DapRequest, args: any): void {
+        const target = this.gotoTargets[(args.targetId ?? 0) - 1];
+        const error = !this.runtime ? 'not running' : !target ? 'unknown target'
+            : this.runtime.selectBlock(args.threadId, target.file, target.line);
+        if (error) {
+            this.respond(req, undefined, error);
+            return;
+        }
+        this.respond(req);
+        this.sendEvent('stopped', { reason: 'goto', threadId: args.threadId, allThreadsStopped: true });
     }
 
     private async onLaunch(req: DapRequest, args: any): Promise<void> {
@@ -363,8 +397,32 @@ class KrlDebugSession implements vscode.DebugAdapter {
                 variablesReference: v.reference,
                 indexedVariables: v.indexedVariables,
                 evaluateName: v.evaluateName,
+                // context key debugProtocolVariableMenuContext: toggle a BOOL, pick a literal of an ENUM
+                __vscodeVariableMenuContext: v.menuContext,
             })),
         });
+    }
+
+    /** `expression = value` from the editor (CodeLens of the stopped line, Change Value), then refresh the views. */
+    private onKrlAssign(req: DapRequest, args: any): void {
+        const result = this.runtime?.assignForDebugger(String(args.expression ?? ''), args.frameId, String(args.value ?? ''));
+        if (!result || typeof result === 'string') {
+            this.respond(req, undefined, result ?? 'not running');
+            return;
+        }
+        this.respond(req, { value: result.value, type: result.type });
+        this.sendEvent('invalidated', { areas: ['variables'] });
+    }
+
+    /** Set a variable from an action of the Variables view, then refresh the views. */
+    private onKrlSetVariable(req: DapRequest, args: any): void {
+        const result = this.runtime?.setVariable(args.variablesReference, args.name ?? '', args.value ?? '');
+        if (!result || typeof result === 'string') {
+            this.respond(req, undefined, result ?? 'not running');
+            return;
+        }
+        this.respond(req, { value: result.value, type: result.type });
+        this.sendEvent('invalidated', { areas: ['variables'] });
     }
 
     private onSetVariable(req: DapRequest, args: any): void {

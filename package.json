@@ -269,6 +269,21 @@
                 "icon": "$(play)"
             },
             {
+                "command": "krl.variables.toggle",
+                "title": "Toggle",
+                "icon": "$(arrow-swap)"
+            },
+            {
+                "command": "krl.variables.setEnum",
+                "title": "Choose Value...",
+                "icon": "$(list-selection)"
+            },
+            {
+                "command": "krl.debug.changeValue",
+                "title": "Change Value...",
+                "category": "KRL"
+            },
+            {
                 "command": "krl.searchVariables",
                 "title": "Search Variables",
                 "category": "KRL",
@@ -727,6 +742,26 @@
             ],
             "debug/variables/context": [
                 {
+                    "command": "krl.variables.toggle",
+                    "when": "debugType == 'krl' && debugProtocolVariableMenuContext == 'krlBool'",
+                    "group": "inline"
+                },
+                {
+                    "command": "krl.variables.setEnum",
+                    "when": "debugType == 'krl' && debugProtocolVariableMenuContext == 'krlEnum'",
+                    "group": "inline"
+                },
+                {
+                    "command": "krl.variables.toggle",
+                    "when": "debugType == 'krl' && debugProtocolVariableMenuContext == 'krlBool'",
+                    "group": "3_modification@0"
+                },
+                {
+                    "command": "krl.variables.setEnum",
+                    "when": "debugType == 'krl' && debugProtocolVariableMenuContext == 'krlEnum'",
+                    "group": "3_modification@0"
+                },
+                {
                     "command": "krl.liveWatch.addVariable",
                     "when": "debugType == 'krl'",
                     "group": "z_commands"
@@ -744,12 +779,29 @@
                     "group": "debug@101"
                 },
                 {
+                    "command": "krl.debug.changeValue",
+                    "when": "inDebugMode && debugType == 'krl' && debugState == 'stopped' && editorLangId == krl",
+                    "group": "debug@99"
+                },
+                {
                     "command": "krl.fold.wrapSelection",
                     "when": "editorLangId == krl && editorHasSelection",
                     "group": "1_modification@9"
                 }
             ],
             "commandPalette": [
+                {
+                    "command": "krl.variables.toggle",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.variables.setEnum",
+                    "when": "false"
+                },
+                {
+                    "command": "krl.debug.changeValue",
+                    "when": "debugType == 'krl' && debugState == 'stopped' && editorLangId == krl"
+                },
                 {
                     "command": "krl.debugProgram",
                     "when": "editorLangId == krl && resourceScheme == file && resourceExtname =~ /^\\.(src|sub)$/i"
