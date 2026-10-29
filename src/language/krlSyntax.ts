@@ -151,7 +151,11 @@ export interface KrlDecl extends Span {
     init: string;
     /** column of the initial value */
     initStart: number;
+    /** for ext: the parameters as declared, EXT H50 (INT :IN, GRP_TYP :IN) (types, no names) */
+    params?: KrlExtParam[];
 }
+
+export interface KrlExtParam { type: string; dims: string; dir: 'IN' | 'OUT' | ''; }
 
 export interface KrlTypeDef extends Span {
     name: string;
@@ -744,7 +748,18 @@ function collectDeclarations(doc: KrlDocument, ln: number, routine: KrlRoutine |
             i += isFct ? 2 : 1;
             const nameTok = toks[i];
             if (!nameTok || nameTok.kind !== 'id') { return; }
-            doc.decls.push({ ...span(ln, nameTok), name: nameTok.text, key: nameTok.text.toLowerCase(), kind: 'ext', type: isFct ? (toks[i - 1]?.text ?? '').toUpperCase() : '', dims: '', isGlobal, routine, init: '', initStart: -1 });
+            const params: KrlExtParam[] = [];
+            const open = toks[i + 1]?.text === '(' ? i + 1 : -1;
+            const close = open >= 0 ? closingToken(toks, open) : -1;
+            const inner = open < 0 ? '' : L.code.slice(toks[open].end, close < toks.length ? toks[close].start : L.code.length);
+            for (const piece of splitTopLevel(inner).map(p => p.trim())) {
+                if (!piece) { continue; }
+                const m = /^([A-Za-z_$][\w$]*)\s*(\[[^\]]*\])?\s*(?::\s*(IN|OUT)\b)?$/i.exec(piece);
+                params.push(m
+                    ? { type: m[1].toUpperCase(), dims: m[2]?.replace(/\s+/g, '') ?? '', dir: (m[3]?.toUpperCase() ?? '') as KrlExtParam['dir'] }
+                    : { type: piece.toUpperCase(), dims: '', dir: '' });
+            }
+            doc.decls.push({ ...span(ln, nameTok), name: nameTok.text, key: nameTok.text.toLowerCase(), kind: 'ext', type: isFct ? (toks[i - 1]?.text ?? '').toUpperCase() : '', dims: '', isGlobal, routine, init: '', initStart: -1, params });
             return;
         }
         case 'import': {

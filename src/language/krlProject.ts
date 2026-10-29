@@ -350,9 +350,24 @@ export class KrlProject {
         const project = this.build(filePath);
         const global = project.routines.get(key);
         if (global) { return global; }
-        const ext = doc.decls.find(d => d.kind === 'ext' && d.key === key);
-        if (ext) { return { kind: 'decl', doc, decl: ext }; }
-        return undefined;
+        return this.extDeclarations(filePath).find(s => s.kind === 'decl' && s.decl.key === key);
+    }
+
+    /**
+     * EXT declarations a file sees: its own, those of the module's data list and the global ones
+     * ($config.dat, GLOBAL in a PUBLIC data list). They declare routines of modules that may not
+     * be in the workspace, like H50 or USERSPOT of the technology packages.
+     */
+    private extDeclarations(filePath: string): KrlSymbol[] {
+        const doc = this.document(filePath);
+        if (!doc) { return []; }
+        const out: KrlSymbol[] = doc.decls.filter(d => d.kind === 'ext').map(d => ({ kind: 'decl', doc, decl: d }));
+        const dat = this.companionDat(filePath);
+        if (dat && dat !== doc) { for (const d of dat.decls) { if (d.kind === 'ext' && !d.routine) { out.push({ kind: 'decl', doc: dat, decl: d }); } } }
+        for (const sym of this.build(filePath).globals.values()) {
+            if (sym.kind === 'decl' && sym.decl.kind === 'ext') { out.push(sym); }
+        }
+        return out;
     }
 
     /** A STRUC or ENUM type visible in a file. */
@@ -414,7 +429,9 @@ export class KrlProject {
         const out = new Map<string, KrlSymbol>();
         for (const r of doc.routines) { out.set(r.key, { kind: 'routine', doc, routine: r }); }
         for (const [key, sym] of this.build(filePath).routines) { if (!out.has(key)) { out.set(key, sym); } }
-        for (const d of doc.decls) { if (d.kind === 'ext' && !out.has(d.key)) { out.set(d.key, { kind: 'decl', doc, decl: d }); } }
+        for (const sym of this.extDeclarations(filePath)) {
+            if (sym.kind === 'decl' && !out.has(sym.decl.key)) { out.set(sym.decl.key, sym); }
+        }
         return [...out.values()];
     }
 

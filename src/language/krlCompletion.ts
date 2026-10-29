@@ -409,6 +409,7 @@ export function operandType(project: KrlProject, filePath: string, line: number,
 export function parameterTypes(project: KrlProject, filePath: string, name: string): string[] | null {
     const sym = project.resolveRoutine(filePath, name);
     if (sym?.kind === 'routine') { return sym.routine.params.map(p => p.type); }
+    if (sym?.kind === 'decl' && sym.decl.params) { return sym.decl.params.map(p => p.type); }
     const builtin = builtinRoutine(name);
     return builtin ? builtin.params.map(p => p.type.replace(/\[\]$/, '')) : null;
 }
@@ -498,7 +499,12 @@ function routineCompletions(project: KrlProject, doc: KrlDocument, want: 'proced
         } else if (sym.kind === 'decl' && sym.decl.kind === 'ext') {
             const isFct = !!sym.decl.type;
             if ((want === 'procedure') === isFct) { continue; }
-            out.push({ label: sym.decl.name, kind: isFct ? 'function' : 'procedure', insertText: `${sym.decl.name}($0)`, snippet: true, signatureHelp: true, detail: 'EXT' });
+            const params = (sym.decl.params ?? []).map(p => `${p.type}${p.dims}${p.dir ? ':' + p.dir : ''}`).join(', ');
+            out.push({
+                label: sym.decl.name, kind: isFct ? 'function' : 'procedure', insertText: `${sym.decl.name}($0)`, snippet: true, signatureHelp: true,
+                sortText: `${SORT.routine}${sym.decl.key}`, description: isFct ? `EXT function · ${sym.decl.type}` : 'EXT subprogram',
+                detail: `${isFct ? `EXTFCT ${sym.decl.type}` : 'EXT'} ${sym.decl.name}(${params}) · ${path.basename(sym.doc.path)}`,
+            });
         }
     }
     for (const b of builtinRoutines()) {

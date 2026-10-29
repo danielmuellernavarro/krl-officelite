@@ -7,7 +7,7 @@
 // Pure logic (no vscode imports).
 
 import * as path from 'path';
-import { KrlDocument, KrlFold, Span, Tok, routineAt, tokenAt, foldsAt } from './krlSyntax';
+import { KrlDecl, KrlDocument, KrlFold, Span, Tok, routineAt, tokenAt, foldsAt } from './krlSyntax';
 import { KrlProject, KrlSymbol } from './krlProject';
 import {
     builtinRoutine, systemVariable, motionInfo, memberUnit, KEYWORDS, MOTIONS, catalogStructMembers, systemEnumValues,
@@ -63,6 +63,12 @@ function paramDoc(dir: string, type: string): string {
     return `${type ? type + ', ' : ''}${how}`;
 }
 
+/** EXT, EXTP or EXTFCT INT ... as written in the declaration of an external routine. */
+function extKeyword(doc: KrlDocument, decl: KrlDecl): string {
+    const kw = doc.lines[decl.line]?.tokens.find(t => /^EXT/i.test(t.text))?.text.toUpperCase() ?? 'EXT';
+    return decl.type ? `${kw} ${decl.type}` : kw;
+}
+
 export function computeSignatureHelp(project: KrlProject, filePath: string, line: number, character: number): SignatureResult | null {
     const doc = project.document(filePath);
     const L = doc?.lines[line];
@@ -83,6 +89,17 @@ export function computeSignatureHelp(project: KrlProject, filePath: string, line
             const comments = commentAbove(sym.doc, r.line);
             const sig = signature(parts, `${comments ? comments + '\n\n' : ''}*${path.basename(sym.doc.path)}*`);
             return { signature: sig, activeParameter: Math.min(call.argIndex, Math.max(0, r.params.length - 1)) };
+        }
+        if (sym?.kind === 'decl' && sym.decl.params) {
+            const params = sym.decl.params;
+            const parts: (string | { param: string; doc?: string })[] = [`${extKeyword(sym.doc, sym.decl)} ${sym.decl.name}(`];
+            params.forEach((p, i) => {
+                if (i > 0) { parts.push(', '); }
+                parts.push({ param: `${p.type}${p.dims}${p.dir ? ' :' + p.dir : ''}`, doc: paramDoc(p.dir || 'OUT', p.type) });
+            });
+            parts.push(')');
+            const sig = signature(parts, `*${path.basename(sym.doc.path)}*`);
+            return { signature: sig, activeParameter: Math.min(call.argIndex, Math.max(0, params.length - 1)) };
         }
         const b = builtinRoutine(call.name);
         if (b) {
@@ -496,6 +513,11 @@ function symbolMarkdown(project: KrlProject, filePath: string, sym: KrlSymbol): 
     switch (sym.kind) {
         case 'decl': {
             const scope = sym.decl.routine ? `local in ${sym.decl.routine.name}` : sym.decl.isGlobal ? 'global' : /^\$config\.dat$/i.test(file) ? 'global ($CONFIG.DAT)' : 'data list of the module';
+            if (sym.decl.kind === 'ext') {
+                const d = sym.decl;
+                const head = `${extKeyword(sym.doc, d)} ${d.name}(${(d.params ?? []).map(p => `${p.type}${p.dims}${p.dir ? ' :' + p.dir : ''}`).join(', ')})`;
+                return ['```krl', head, '```', 'Routine of another module, declared with EXT', `*${file}, line ${d.line + 1} · ${scope}*`].join('\n');
+            }
             return declarationMarkdown(sym.decl, `${file} · ${scope}`);
         }
         case 'param': {

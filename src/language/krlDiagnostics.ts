@@ -209,6 +209,7 @@ function checkNames(project: KrlProject, doc: KrlDocument, settings: DiagnosticS
                 if (routine) {
                     checkCase(ref, declaredName(routine), settings, add);
                     if (routine.kind === 'routine') { checkArgumentCount(doc, ref, routine.routine.params.length, add); }
+                    if (routine.kind === 'decl' && routine.decl.params) { checkArgumentCount(doc, ref, routine.decl.params.length, add); }
                     break;
                 }
                 if (builtinRoutine(ref.name) || SIMULATOR_FUNCTIONS.has(ref.key)) { break; }

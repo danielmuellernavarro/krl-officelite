@@ -2,7 +2,7 @@
     "name": "krl-officelite",
     "displayName": "KUKA KRL OfficeLite",
     "description": "KUKA KRL for VS Code: smart completion, error checking with quick fixes, formatter and a debugger that simulates the robot controller (advance run, motion timing, I/O, override, T1/T2/AUT modes)",
-    "version": "2.0.3",
+    "version": "2.0.5",
     "publisher": "krl-officelite",
     "license": "MIT",
     "engines": {

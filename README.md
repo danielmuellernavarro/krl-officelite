@@ -2,7 +2,7 @@
 
 Write, check and test KUKA KRL programs in VS Code: completion, errors and quick fixes while you type, a formatter, and a debugger that simulates the robot controller. Step through `.src` / `.sub` programs without a robot and without OfficeLite.
 
-![Debugging demo.src: set a breakpoint, press F5, force $IN[1] in the KRL I/O view and watch the simulated robot](images/screenshots/debugger-demo.gif)
+![Debugging demo.src: set a breakpoint, press F5, force input 1 in the KRL I/O view and watch the simulated robot](images/screenshots/debugger-demo.gif)
 
 ## Features
 
