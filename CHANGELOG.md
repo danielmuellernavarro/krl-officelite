@@ -1,5 +1,9 @@
 # Change Log
 
+### 2.0.6
+
+- The extension no longer contributes a file icon theme, which replaced the icons of all files in VS Code. KRL files (`.src`, `.dat`, `.sub`) show the KRL icon in your current file icon theme.
+
 ### 2.0.5
 
 - Routines declared with `EXT` in `$config.dat` or in the module's data list (e.g. `H50`, `USERSPOT`) are no longer *Unknown routine*. Hover, signature help and completion show their parameters.
